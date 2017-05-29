@@ -947,6 +947,53 @@ public class TestHarness : MonoBehaviour
         }
     }
 
+
+    private List<string> commands = new List<string>();
+    IEnumerator ProcessNextCommand()
+    {
+        while (commands.Count > 0)
+        {
+            string cmd = commands[0];
+            foreach (var handler in tpHandlers)
+            {
+                string code = handler.id.ToString();
+                Match match = Regex.Match(cmd, string.Format("^!{0} (.+)", code), RegexOptions.IgnoreCase);
+                if (!match.Success)
+                    continue;
+                yield return new WaitForSeconds(0.5f);
+                string internalCommand = match.Groups[1].Value;
+                if (internalCommand.Equals("show", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    yield return new WaitForSeconds(0.5f);
+                    break;
+                }
+                else
+                {
+                    IEnumerator tp = SimulateModule(handler.component, handler.transform, handler.method,
+                        internalCommand);
+                    bool moveNext = true;
+                    do
+                    {
+                        try
+                        {
+                            moveNext = tp.MoveNext();
+                        }
+                        catch
+                        {
+                            moveNext = false;
+                        }
+                        if (moveNext)
+                            yield return tp.Current;
+                    } while (moveNext);
+                    yield return new WaitForSeconds(0.5f);
+                    break;
+                }
+            }
+            commands.RemoveAt(0);
+        }
+        cancelTwitchCommand = false;
+    }
+
     string command = "";
     void OnGUI()
     {
@@ -992,23 +1039,25 @@ public class TestHarness : MonoBehaviour
         if (GUILayout.Button("Simulate Twitch Command"))
         {
             Debug.Log("Twitch Command: " + command);
-            
 
-            //StartCoroutine(SimulateModule(component, module.transform, method, command));
-            foreach (var handler in tpHandlers)
+            switch (command.ToLowerInvariant())
             {
-                string code = handler.id.ToString();
-                Match match = Regex.Match(command, string.Format("^!{0} (.+)", code), RegexOptions.IgnoreCase);
-                if (!match.Success)
-                    continue;
-                string internalCommand = match.Groups[1].Value;
-                StartCoroutine(SimulateModule(handler.component, handler.transform, handler.method, internalCommand));
+                case "!cancel":
+                    cancelTwitchCommand = true;
+                    break;
+                case "!stop":
+                    cancelTwitchCommand = true;
+                    commands.Clear();
+                    break;
+                default:
+                    commands.Add(command);
+                    if (commands.Count == 1)
+                    {
+                        StartCoroutine(ProcessNextCommand());
+                    }
+                    break;
             }
             command = "";
-        }
-        if (GUILayout.Button("Cancel"))
-        {
-            cancelTwitchCommand = true;
         }
     }
 
