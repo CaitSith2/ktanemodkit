@@ -12,6 +12,7 @@ GameObject:
   - 114: {fileID: 11434540}
   - 114: {fileID: 11482148}
   - 114: {fileID: 11424162}
+  - 114: {fileID: 114000010044942158}
   m_Layer: 0
   m_Name: ExampleModule
   m_TagString: Untagged
@@ -2179,6 +2180,8 @@ MonoBehaviour:
   - {fileID: 11407772}
   - {fileID: 11421786}
   - {fileID: 11478104}
+  bombInfo: {fileID: 114000010044942158}
+  bombModule: {fileID: 11434540}
 --- !u!114 &11425582
 MonoBehaviour:
   m_ObjectHideFlags: 1
@@ -2311,6 +2314,17 @@ Prefab:
   m_ParentPrefab: {fileID: 0}
   m_RootGameObject: {fileID: 100002}
   m_IsPrefabParent: 1
+--- !u!114 &114000010044942158
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 100002}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 2144496390, guid: 45b809be76fd7a3468b6f517bced6f28, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!114 &114000010150934972
 MonoBehaviour:
   m_ObjectHideFlags: 1
