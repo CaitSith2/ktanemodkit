@@ -1,10 +1,26 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using UnityEditor;
 using UnityEngine;
+using Object = UnityEngine.Object;
+using Random = UnityEngine.Random;
+
+public class TwitchPlaysHandler
+{
+    public Type type;
+    public Component component;
+    public Transform transform;
+    public MethodInfo method;
+    public FieldInfo cancel;
+    public string helpMessage;
+    public string manualCode;
+    public int id;
+}
 
 public class FakeBombInfo : MonoBehaviour
 {
@@ -360,6 +376,8 @@ public class FakeBombInfo : MonoBehaviour
 
 public class TestHarness : MonoBehaviour
 {
+    public List<TwitchPlaysHandler> tpHandlers = new List<TwitchPlaysHandler>();
+
     private FakeBombInfo fakeInfo;
 
     public GameObject HighlightPrefab;
@@ -422,6 +440,76 @@ public class TestHarness : MonoBehaviour
         }
     }
 
+    void AddTwitchPlayHandler(object module, ref int id)
+    {
+        Transform transform;
+        Component[] allComponents;
+        if (module is KMBombModule)
+        {
+            KMBombModule kmmod = (KMBombModule) module;
+            transform = kmmod.transform;
+            allComponents = kmmod.gameObject.GetComponentsInChildren<Component>(true);
+        }
+        else if (module is KMNeedyModule)
+        {
+            KMNeedyModule kmmod = (KMNeedyModule)module;
+            transform = kmmod.transform;
+            allComponents = kmmod.gameObject.GetComponentsInChildren<Component>(true);
+        }
+        else
+        {
+            return;
+        }
+        foreach (Component component in allComponents)
+        {
+            System.Type type = component.GetType();
+            MethodInfo method = type.GetMethod("ProcessTwitchCommand", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+            if (method != null
+                && method.GetParameters() != null
+                && method.GetParameters().Length == 1
+                && method.GetParameters()[0].ParameterType == typeof(string)
+                && (method.ReturnType == typeof(KMSelectable[]) || method.ReturnType == typeof(IEnumerator)))
+            {
+                TwitchPlaysHandler handler = new TwitchPlaysHandler();
+                handler.component = component;
+                handler.transform = transform;
+                handler.method = method;
+                handler.id = id++;
+
+                FieldInfo helpMessage = type.GetField("TwitchHelpMessage",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (helpMessage != null && helpMessage.GetValue(component.GetComponent(type)) is string)
+                    handler.helpMessage = (string)helpMessage.GetValue(component.GetComponent(type));
+
+                FieldInfo manualCode = type.GetField("TwitchManualCode",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (manualCode != null && manualCode.GetValue(component.GetComponent(type)) is string)
+                    handler.manualCode = (string)manualCode.GetValue(component.GetComponent(type));
+
+                FieldInfo cancelField = type.GetField("TwitchShouldCancelCommand",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (manualCode != null && manualCode.GetValue(component.GetComponent(type)) is bool)
+                    handler.cancel = cancelField;
+
+                if (module is KMBombModule)
+                {
+                    KMBombModule kmmod = (KMBombModule) module;
+                    kmmod.OnPass += OnTwitchPass;
+                    kmmod.OnStrike += OnTwitchStrike;
+                }
+                else
+                {
+                    KMNeedyModule kmmod = (KMNeedyModule) module;
+                    kmmod.OnStrike += OnTwitchStrike;
+                }
+
+                tpHandlers.Add(handler);
+                break;
+            }
+        }
+    }
+
     void Start()
     {
         MonoBehaviour[] scripts = MonoBehaviour.FindObjectsOfType<MonoBehaviour>();
@@ -440,21 +528,24 @@ public class TestHarness : MonoBehaviour
             }
         }
 
-        currentSelectable = GetComponent<TestSelectable>();
+        int id = 1;
 
+        currentSelectable = GetComponent<TestSelectable>();
         KMBombModule[] modules = FindObjectsOfType<KMBombModule>();
         KMNeedyModule[] needyModules = FindObjectsOfType<KMNeedyModule>();
+
         fakeInfo.needyModules = needyModules.ToList();
         currentSelectable.Children = new TestSelectable[modules.Length + needyModules.Length];
         for (int i = 0; i < modules.Length; i++)
         {
             KMBombModule mod = modules[i];
+            AddTwitchPlayHandler(mod, ref id);
 
             currentSelectable.Children[i] = modules[i].GetComponent<TestSelectable>();
             modules[i].GetComponent<TestSelectable>().Parent = currentSelectable;
 
             fakeInfo.modules.Add(new KeyValuePair<KMBombModule, bool>(modules[i], false));
-            modules[i].OnPass = delegate ()
+            modules[i].OnPass += delegate ()
             {
                 Debug.Log("Module Passed");
                 fakeInfo.modules.Remove(fakeInfo.modules.First(t => t.Key.Equals(mod)));
@@ -471,7 +562,7 @@ public class TestHarness : MonoBehaviour
                 if (allSolved) fakeInfo.Solved();
                 return false;
             };
-            modules[i].OnStrike = delegate ()
+            modules[i].OnStrike += delegate ()
             {
                 Debug.Log("Strike");
                 fakeInfo.HandleStrike();
@@ -481,15 +572,17 @@ public class TestHarness : MonoBehaviour
 
         for (int i = 0; i < needyModules.Length; i++)
         {
+            AddTwitchPlayHandler(needyModules[i], ref id);
+
             currentSelectable.Children[modules.Length + i] = needyModules[i].GetComponent<TestSelectable>();
             needyModules[i].GetComponent<TestSelectable>().Parent = currentSelectable;
 
-            needyModules[i].OnPass = delegate ()
+            needyModules[i].OnPass += delegate ()
             {
                 Debug.Log("Module Passed");
                 return false;
             };
-            needyModules[i].OnStrike = delegate ()
+            needyModules[i].OnStrike += delegate ()
             {
                 Debug.Log("Strike");
                 fakeInfo.HandleStrike();
@@ -658,9 +751,37 @@ public class TestHarness : MonoBehaviour
         }
     }
 
+    protected bool OnTwitchStrike()
+    {
+        return false;
+    }
+
+    protected bool OnTwitchPass()
+    {
+        return false;
+    }
+
+    protected void AwardStrikes(int count)
+    {
+        Debug.LogFormat("Twitch Plays awarded {0} to the player{1}", 
+            count == 1 ? "a strike" : count + " strikes",
+            string.IsNullOrEmpty(StrikeMessage) ? "" : " caused by " + StrikeMessage);
+    }
+
+    private int twitchPlaysStrikes = 0;
+    private bool DisableOnStrike;
+    private bool hookedUpHandleStrike;
+    private string StrikeMessage;
+    private bool cancelTwitchCommand;
     Dictionary<Component, HashSet<KMSelectable>> ComponentHelds = new Dictionary<Component, HashSet<KMSelectable>> { };
     IEnumerator SimulateModule(Component component, Transform moduleTransform, MethodInfo method, string command)
     {
+        if (!hookedUpHandleStrike)
+        {
+            //foreach()
+        }
+
+        int initalStrikes = twitchPlaysStrikes;
         // Simple Command
         if (method.ReturnType == typeof(KMSelectable[]))
         {
@@ -680,15 +801,16 @@ public class TestHarness : MonoBehaviour
                 yield break;
             }
 
-            int initalStrikes = fakeInfo.strikes;
             foreach (KMSelectable selectable in selectableSequence)
             {
                 DoInteractionStart(selectable);
                 yield return new WaitForSeconds(0.1f);
                 DoInteractionEnd(selectable);
 
-                if (fakeInfo.strikes != initalStrikes)
+                if (fakeInfo.strikes != initalStrikes || cancelTwitchCommand)
                 {
+                    if (cancelTwitchCommand)
+                        cancelTwitchCommand = false;
                     break;
                 }
             };
@@ -734,7 +856,67 @@ public class TestHarness : MonoBehaviour
                 }
                 else if (currentObject is string)
                 {
-                    Debug.Log("Twitch handler sent: " + currentObject);
+                    //Debug.Log("Twitch handler sent: " + currentObject);
+                    int temp;
+                    string currentString = (string) currentObject;
+                    if (currentString.Equals("solve", StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        Debug.Log("Twitch Handler: Delayed solve");
+                    }
+                    else if (currentString.Equals("strike", StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        Debug.Log("Twitch Handler: Delayed strike");
+                    }
+                    else if (currentString.StartsWith("strikemessage ", StringComparison.InvariantCultureIgnoreCase) &&
+                             currentString.Substring(14).Trim() != string.Empty)
+                    {
+                        StrikeMessage = currentString.Substring(14);
+                    }
+                    else if (currentString.Equals("parseerror", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        Debug.Log("Twitch Handler: Parser error. Invokation will not continue");
+                        break;
+                    }
+                    else if (currentString.Equals("trycancel", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        Debug.LogFormat("Twitch Handler: Force Cancel if one is requested. Cancellation requested = {0}",
+                            cancelTwitchCommand);
+                        if (cancelTwitchCommand)
+                        {
+                            cancelTwitchCommand = false;
+                            break;
+                        }
+                    }
+                    else if (currentString.Equals("cancelled", StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        Debug.Log("Twitch Handler: Clean cancel processed by the module.");
+                        cancelTwitchCommand = false;
+                        break;
+                    }
+                    else if (currentString.StartsWith("sendtochat ", StringComparison.InvariantCultureIgnoreCase) &&
+                             currentString.Substring(11).Trim() != string.Empty)
+                    {
+                        Debug.LogFormat("Twitch Handler: Send message to chat.  Message = \"{0}\"",
+                            currentString.Substring(11));
+                    }
+                    else if (currentString.StartsWith("add strike", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        Debug.Log("Twitch Handler: Award a single strike.");
+                        AwardStrikes(1);
+                    }
+                    else if (currentString.Equals("multiple strikes", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        Debug.Log("Twitch Handler: Disable Twitch OnStrike method.");
+                        DisableOnStrike = true;
+                    }
+                    else if (currentString.StartsWith("award strikes ", StringComparison.CurrentCultureIgnoreCase) &&
+                             int.TryParse(currentString.Substring(14), out temp))
+                    {
+                        Debug.LogFormat("Twitch Handler: Award accumulated strikes. Strikes = {0}",temp);
+                        twitchPlaysStrikes += temp;
+                        AwardStrikes(twitchPlaysStrikes - initalStrikes);
+                        DisableOnStrike = false;
+                    }
                 }
                 else if (currentObject is Quaternion)
                 {
@@ -743,7 +925,6 @@ public class TestHarness : MonoBehaviour
                 else if (currentObject is KMSelectable[])
                 {
                     KMSelectable[] selectables = (KMSelectable[]) currentObject;
-                    int initalStrikes = fakeInfo.strikes;
                     foreach (var selectable in selectables)
                     {
                         DoInteractionStart(selectable);
@@ -757,6 +938,11 @@ public class TestHarness : MonoBehaviour
                     }
                 }
                 yield return currentObject;
+                if (twitchPlaysStrikes != initalStrikes)
+                {
+                    Debug.Log("A strike was detected - Aborting.");
+                    break;
+                }
             }
         }
     }
@@ -806,22 +992,23 @@ public class TestHarness : MonoBehaviour
         if (GUILayout.Button("Simulate Twitch Command"))
         {
             Debug.Log("Twitch Command: " + command);
+            
 
-            foreach (KMBombModule module in FindObjectsOfType<KMBombModule>())
+            //StartCoroutine(SimulateModule(component, module.transform, method, command));
+            foreach (var handler in tpHandlers)
             {
-                Component[] allComponents = module.gameObject.GetComponentsInChildren<Component>(true);
-                foreach (Component component in allComponents)
-                {
-                    System.Type type = component.GetType();
-                    MethodInfo method = type.GetMethod("ProcessTwitchCommand", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-
-                    if (method != null)
-                    {
-                        StartCoroutine(SimulateModule(component, module.transform, method, command));
-                    }
-                }
+                string code = handler.id.ToString();
+                Match match = Regex.Match(command, string.Format("^!{0} (.+)", code), RegexOptions.IgnoreCase);
+                if (!match.Success)
+                    continue;
+                string internalCommand = match.Groups[1].Value;
+                StartCoroutine(SimulateModule(handler.component, handler.transform, handler.method, internalCommand));
             }
             command = "";
+        }
+        if (GUILayout.Button("Cancel"))
+        {
+            cancelTwitchCommand = true;
         }
     }
 
