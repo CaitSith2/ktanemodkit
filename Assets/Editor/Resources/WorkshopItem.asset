@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5cf2299c8864afe4ab42466f546ae20d, type: 3}
+  m_Name: WorkshopItem
+  m_EditorClassIdentifier: 
+  WorkshopPublishedFileID: 0
+  Title: Freeplay Timer and Module Helper
+  Description: 'This service helps out for those large bomb cases that have been released
+    recently, so that you don''t have to keep clicking your mouse button over and
+    over to max out the modules and/or time for the selected bomb case loaded.
+
+
+    The controls are as follows
+
+    Up arrow - Increase timer.
+
+    Down arrow - Decrease timer.
+
+    Right arrow - Increase module count
+
+    Left arrow - Decrease module count.
+
+
+    Note - The displayed text is there for illustrative purposes only.  It is not
+    actually present in the module itself.
+
+    For as long as the given arrow key is held, the specific thing will increase/decrease
+    far faster than you can click the mouse on that same button to do the same result.
+
+
+    Credits to at_bash for the freeplay reflection code from twitch-plays on which
+    I based this on.'
+  PreviewImage: {fileID: 2800000, guid: aef2c52a12bda4444990a56c8017537a, type: 3}
+  Tags:
+  - Setup Room
