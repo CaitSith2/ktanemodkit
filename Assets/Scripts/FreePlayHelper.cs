@@ -23,10 +23,21 @@ public class FreePlayHelper : MonoBehaviour
 	}
 	
 	// Update is called once per frame
+    private IEnumerator _handler = null;
 	void Update ()
 	{
 	    if (_freeplayCommander == null) return;
-	    if (Input.GetKeyDown(KeyCode.UpArrow))
+	    if (Input.GetKeyDown(KeyCode.LeftArrow) ||
+	        Input.GetKeyDown(KeyCode.RightArrow) ||
+	        Input.GetKeyDown(KeyCode.UpArrow) ||
+	        Input.GetKeyDown(KeyCode.DownArrow) ||
+	        Input.GetKeyDown(KeyCode.KeypadEnter) || 
+            Input.GetKeyDown(KeyCode.Return))
+	    {
+	        StopCoroutine(_freeplayCommander.HandleInput());
+	        StartCoroutine(_freeplayCommander.HandleInput());
+        }
+	    /*if (Input.GetKeyDown(KeyCode.UpArrow))
 	    {
             DebugLog("Incrementing Bomb Timer");
 	        StartCoroutine(_freeplayCommander.IncrementBombTimer());
@@ -46,11 +57,13 @@ public class FreePlayHelper : MonoBehaviour
 	        DebugLog("Decrementing Module Count");
 	        StartCoroutine(_freeplayCommander.DecrementModuleCount());
 	    }
+        */
 	}
 
     void OnStateChange(KMGameInfo.State state)
     {
         DebugLog("Current state = {0}", state.ToString());
+        StopAllCoroutines();
         if (state == KMGameInfo.State.Setup)
         {
             StartCoroutine(CheckForFreeplayDevice());

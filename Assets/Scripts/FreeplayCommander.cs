@@ -13,6 +13,16 @@ public class FreeplayCommander
         Debug.LogFormat(debugstring, args);
     }
 
+    public enum freeplaySelection
+    {
+        Timer = 0,
+        Bombs,
+        Modules,
+        Needy,
+        Hardcore,
+        ModsOnly
+    };
+
     #region Constructors
     static FreeplayCommander()
     {
@@ -90,258 +100,150 @@ public class FreeplayCommander
     }
     #endregion
 
-    #region Interface Implementation
-   /* public IEnumerator RespondToCommand(string userNickName, string message, ICommandResponseNotifier responseNotifier)
+
+    #region Helper Methods
+
+    private freeplaySelection _index = freeplaySelection.Timer;
+    private static int _bombCount = 1;
+
+    public IEnumerator HandleInput()
     {
-        message = message.ToLowerInvariant();
-        int holdState = (int)_holdStateProperty.GetValue(FloatingHoldable, null);
-        
-        if (holdState == 0)
+        if (!Input.GetKeyDown(KeyCode.LeftArrow) && !Input.GetKeyDown(KeyCode.RightArrow) &&
+            !Input.GetKeyDown(KeyCode.UpArrow) && !Input.GetKeyDown(KeyCode.DownArrow) &&
+            !Input.GetKeyDown(KeyCode.Return) && !Input.GetKeyDown(KeyCode.KeypadEnter))
         {
-            if (message.Equals("drop", StringComparison.InvariantCultureIgnoreCase) ||
-            message.Equals("let go", StringComparison.InvariantCultureIgnoreCase) ||
-            message.Equals("put down", StringComparison.InvariantCultureIgnoreCase))
+            yield break;
+        }
+        if (Input.GetKeyDown(KeyCode.KeypadEnter) || Input.GetKeyDown(KeyCode.Return))
+        {
+            StartBomb();
+            yield break;
+        }
+        int holdState = (int)_holdStateProperty.GetValue(FloatingHoldable, null);
+        if (holdState != 0)
+        {
+            _index = 0;
+            IEnumerator hold = HoldFreeplayDevice();
+            while (hold.MoveNext())
+                yield return hold.Current;
+            ToggleIndex();
+            yield break;
+        }
+        if (Input.GetKeyDown(KeyCode.UpArrow))
+        {
+            _index--;
+            if (_index == freeplaySelection.Bombs && !IsDualBombInstalled())
+                _index = freeplaySelection.Timer;
+            if (_index < freeplaySelection.Timer)
             {
+                _index = freeplaySelection.Timer;
                 LetGoFreeplayDevice();
                 yield break;
             }
+            ToggleIndex();
+            yield break;
         }
-        else
+        if (Input.GetKeyDown(KeyCode.DownArrow))
         {
-            IEnumerator holdCoroutine = HoldFreeplayDevice();
-            while (holdCoroutine.MoveNext())
+            _index++;
+            if (_index == freeplaySelection.Bombs && !IsDualBombInstalled())
+                _index = freeplaySelection.Modules;
+            if (_index > freeplaySelection.ModsOnly)
+                _index = freeplaySelection.ModsOnly;
+            ToggleIndex();
+            yield break;
+        }
+        if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.RightArrow))
+        {
+            IEnumerator handler = null;
+            switch (_index)
             {
-                yield return holdCoroutine.Current;
-            }
-        }
-
-        string changeHoursTo = String.Empty;
-        string changeMinutesTo = String.Empty;
-        string changeSecondsTo = String.Empty;
-        string changeBombsTo = String.Empty;
-        string changeModulesTo = String.Empty;
-        bool startBomb = false;
-        
-        if (message.Equals("needy on", StringComparison.InvariantCultureIgnoreCase))
-        {
-            SetNeedy();
-        }
-        else if (message.Equals("needy off", StringComparison.InvariantCultureIgnoreCase))
-        {
-            SetNeedy(false);
-        }
-        else if (message.Equals("hardcore on", StringComparison.InvariantCultureIgnoreCase))
-        {
-            SetHardcore();
-        }
-        else if (message.Equals("hardcore off", StringComparison.InvariantCultureIgnoreCase))
-        {
-            SetHardcore(false);
-        }
-        else if (message.Equals("mods only on", StringComparison.InvariantCultureIgnoreCase))
-        {
-            SetModsOnly();
-        }
-        else if (message.Equals("mods only off", StringComparison.InvariantCultureIgnoreCase))
-        {
-            SetModsOnly(false);
-        }
-        else if (message.Equals("start", StringComparison.InvariantCultureIgnoreCase))
-        {
-            StartBomb();
-        }
-        else if (message.StartsWith("profile"))
-        {
-            string profile = message.Remove(0, 8).Trim();
-
-            switch (profile)
-            {
-                case "single":
-                case "solo":
-                    changeBombsTo = "1";
-                    changeHoursTo = "0";
-                    changeMinutesTo = "20";
-                    changeModulesTo = "11";
+                case freeplaySelection.Timer:
+                    handler = Input.GetKeyDown(KeyCode.LeftArrow) ? DecrementBombTimer() : IncrementBombTimer();
                     break;
-
-                case "double":
-                    changeBombsTo = "1";
-                    changeHoursTo = "0";
-                    changeMinutesTo = "40";
-                    changeModulesTo = "23";
+                case freeplaySelection.Bombs:
+                    handler = SetBombCount();
                     break;
-
-                case "quadruple":
-                case "quad":
-                    changeBombsTo = "1";
-                    changeHoursTo = "1";
-                    changeMinutesTo = "20";
-                    changeModulesTo = "47";
+                case freeplaySelection.Modules:
+                    handler = Input.GetKeyDown(KeyCode.LeftArrow) ? DecrementModuleCount() : IncrementModuleCount();
+                    break; 
+                case freeplaySelection.Needy:
+                    handler = SetNeedy();
                     break;
-
-                case "dual single":
-                case "dual solo":
-                    changeBombsTo = "2";
-                    changeHoursTo = "0";
-                    changeMinutesTo = "40";
-                    changeModulesTo = "11";
+                case freeplaySelection.Hardcore:
+                    handler = SetHardcore();
                     break;
-
-                case "dual double":
-                    changeBombsTo = "2";
-                    changeHoursTo = "1";
-                    changeMinutesTo = "20";
-                    changeModulesTo = "23";
-                    break;
-
-                case "dual quadruple":
-                case "dual quad":
-                    changeBombsTo = "2";
-                    changeHoursTo = "2";
-                    changeMinutesTo = "40";
-                    changeModulesTo = "47";
+                case freeplaySelection.ModsOnly:
+                    handler = SetModsOnly();
                     break;
             }
-        }
-        else if (message.StartsWith("start"))
-        {
-            Match timerMatch = Regex.Match(message, "([0-9]):([0-9]{2}):([0-9]{2})");
-            if (timerMatch.Success)
+            if (handler == null)
+                yield break;
+            while (handler.MoveNext())
             {
-                changeHoursTo = timerMatch.Groups[1].Value;
-                changeMinutesTo = timerMatch.Groups[2].Value;
-                changeSecondsTo = timerMatch.Groups[3].Value;
-                message = message.Remove(timerMatch.Index, timerMatch.Length);
-            }
-            else
-            {
-                timerMatch = Regex.Match(message, "([0-9]+):([0-9]{2})");
-                if (timerMatch.Success)
-                {
-                    changeMinutesTo = timerMatch.Groups[1].Value;
-                    changeSecondsTo = timerMatch.Groups[2].Value;
-                    message = message.Remove(timerMatch.Index, timerMatch.Length);
-                }
-            }
-
-
-            Match modulesMatch = Regex.Match(message, "[0-9]+");
-
-            while (modulesMatch.Success)
-            {
-                int count = 0;
-
-                if (int.TryParse(modulesMatch.Value, out count))
-                {
-                    if (count <= 2)
-                    {
-                        changeBombsTo = modulesMatch.Value;
-                    }
-                    else
-                    {
-                        changeModulesTo = modulesMatch.Value;
-                    }
-
-                    Debug.Log(string.Format("Setting {1} to {0}", modulesMatch.Value,
-                        count <= 2 ? "bombs" : "modules"));
-                }
-                message = message.Remove(modulesMatch.Index, modulesMatch.Length);
-                modulesMatch = Regex.Match(message, "[0-9]+");
-            }
-
-            string messageLower = message.ToLowerInvariant();
-
-            SetHardcore(messageLower.Contains("hardcore"));
-            SetNeedy(messageLower.Contains("needy"));
-
-            if (messageLower.Contains("vanilla"))
-            {
-                SetModsOnly(false);
-            }
-            else if (messageLower.Contains("mods"))
-            {
-                SetModsOnly();
-            }
-
-            startBomb = true;
-        }
-        else
-        {
-            Match timerMatch = Regex.Match(message, "^timer? ([0-9]+)(?::([0-9]{2}))(?::([0-9]{2}))$", RegexOptions.IgnoreCase);
-            if (timerMatch.Success)
-            {
-                changeHoursTo = timerMatch.Groups[1].Value;
-                changeMinutesTo = timerMatch.Groups[2].Value;
-                changeSecondsTo = timerMatch.Groups[3].Value;
-            }
-
-            timerMatch = Regex.Match(message, "^timer? ([0-9]+)(?::([0-9]{2}))?$", RegexOptions.IgnoreCase);
-            if (timerMatch.Success)
-            {
-                changeMinutesTo = timerMatch.Groups[1].Value;
-                changeSecondsTo = timerMatch.Groups[2].Value;
-            }
-
-            Match bombsMatch = Regex.Match(message, "^bombs ([0-9]+)$", RegexOptions.IgnoreCase);
-            if (bombsMatch.Success)
-            {
-                changeBombsTo = bombsMatch.Groups[1].Value;
-            }
-
-            Match modulesMatch = Regex.Match(message, "^modules ([0-9]+)$", RegexOptions.IgnoreCase);
-            if (modulesMatch.Success)
-            {
-                changeModulesTo = modulesMatch.Groups[1].Value;
+                yield return handler.Current;
             }
         }
-
-        if (changeMinutesTo != String.Empty)
-        {
-            IEnumerator setTimerCoroutine = SetBombTimer(changeHoursTo, changeMinutesTo, changeSecondsTo);
-            while (setTimerCoroutine.MoveNext())
-            {
-                yield return setTimerCoroutine.Current;
-            }
-        }
-        if (changeBombsTo != String.Empty)
-        {
-            IEnumerator setBombsCoroutine = SetBombCount(changeBombsTo);
-            while (setBombsCoroutine.MoveNext())
-            {
-                yield return setBombsCoroutine.Current;
-            }
-        }
-        if (changeModulesTo != String.Empty)
-        {
-            IEnumerator setModulesCoroutine = SetBombModules(changeModulesTo);
-            while (setModulesCoroutine.MoveNext())
-            {
-                yield return setModulesCoroutine.Current;
-            }
-        }
-        if (startBomb)
-        {
-            StartBomb();
-        }
-
-    }*/
-    #endregion
-
-    #region Helper Methods
-    public bool IsDualBombInstalled()
-    {
-        float seconds_to_solve = (float)_MAXSECONDSFIELD.GetValue(null);
-        return seconds_to_solve > 600.0f;
     }
+
+    public void ToggleIndex()
+    {
+        object currentSettings = _currentSettingsField.GetValue(FreeplayDevice);
+        int currentModuleCount = (int)_moduleCountField.GetValue(currentSettings);
+        float currentTime = (float) _timeField.GetValue(currentSettings);
+        switch (_index)
+        {
+            case freeplaySelection.Timer:
+                MonoBehaviour timerUp = (MonoBehaviour)_timeIncrementField.GetValue(FreeplayDevice);
+                MonoBehaviour timerDown = (MonoBehaviour) _timeDecrementField.GetValue(FreeplayDevice);
+                SelectObject((MonoBehaviour)timerUp.GetComponent(_selectableType));
+                if (Mathf.FloorToInt(currentTime) == Mathf.FloorToInt((float) _timeField.GetValue(currentSettings)))
+                    break;
+                SelectObject((MonoBehaviour)timerDown.GetComponent(_selectableType));
+                break;
+            case freeplaySelection.Bombs:
+                SelectObject(SelectableChildren[_bombCount + 1]);
+                break;
+            case freeplaySelection.Modules:
+                MonoBehaviour moduleUp = (MonoBehaviour) _moduleCountIncrementField.GetValue(FreeplayDevice);
+                MonoBehaviour moduleDown = (MonoBehaviour) _moduleCountDecrementField.GetValue(FreeplayDevice);
+                SelectObject((MonoBehaviour)moduleUp.GetComponent(_selectableType));
+                if (currentModuleCount == (int) _moduleCountField.GetValue(currentSettings))
+                    break;
+                SelectObject((MonoBehaviour)moduleDown.GetComponent(_selectableType));
+                break;
+            case freeplaySelection.Needy:
+                MonoBehaviour needyToggle = (MonoBehaviour)_needyToggleField.GetValue(FreeplayDevice);
+                SelectObject((MonoBehaviour)needyToggle.GetComponent(_selectableType));
+                SelectObject((MonoBehaviour)needyToggle.GetComponent(_selectableType));
+                break;
+            case freeplaySelection.Hardcore:
+                MonoBehaviour hardcoreToggle = (MonoBehaviour)_hardcoreToggleField.GetValue(FreeplayDevice);
+                SelectObject((MonoBehaviour)hardcoreToggle.GetComponent(_selectableType));
+                SelectObject((MonoBehaviour)hardcoreToggle.GetComponent(_selectableType));
+                break;
+            case freeplaySelection.ModsOnly:
+                MonoBehaviour modsToggle = (MonoBehaviour)_modsOnlyToggleField.GetValue(FreeplayDevice);
+                SelectObject((MonoBehaviour)modsToggle.GetComponent(_selectableType));
+                SelectObject((MonoBehaviour)modsToggle.GetComponent(_selectableType));
+                break;
+        }
+    }
+
+    private static float startDelay = 0.2f;
+    private static float Acceleration = 0.005f;
+    private static float minDelay = 0.01f;
 
     public IEnumerator IncrementBombTimer()
     {
         MonoBehaviour button = (MonoBehaviour) _timeIncrementField.GetValue(FreeplayDevice);
         MonoBehaviour buttonSelectable = (MonoBehaviour)button.GetComponent(_selectableType);
-        while (Input.GetKey(KeyCode.UpArrow))
+        float delay = startDelay;
+        while (Input.GetKey(KeyCode.RightArrow))
         {
             SelectObject(buttonSelectable);
-            yield return new WaitForSeconds(0.01f);
+            yield return new WaitForSeconds(Mathf.Max(delay, minDelay));
+            delay -= Acceleration;
         }
     }
 
@@ -349,10 +251,12 @@ public class FreeplayCommander
     {
         MonoBehaviour button = (MonoBehaviour)_timeDecrementField.GetValue(FreeplayDevice);
         MonoBehaviour buttonSelectable = (MonoBehaviour)button.GetComponent(_selectableType);
-        while (Input.GetKey(KeyCode.DownArrow))
+        float delay = startDelay;
+        while (Input.GetKey(KeyCode.LeftArrow))
         {
             SelectObject(buttonSelectable);
-            yield return new WaitForSeconds(0.01f);
+            yield return new WaitForSeconds(Mathf.Max(delay, minDelay));
+            delay -= Acceleration;
         }
     }
 
@@ -360,10 +264,12 @@ public class FreeplayCommander
     {
         MonoBehaviour button = (MonoBehaviour)_moduleCountIncrementField.GetValue(FreeplayDevice);
         MonoBehaviour buttonSelectable = (MonoBehaviour)button.GetComponent(_selectableType);
+        float delay = startDelay;
         while (Input.GetKey(KeyCode.RightArrow))
         {
             SelectObject(buttonSelectable);
-            yield return new WaitForSeconds(0.01f);
+            yield return new WaitForSeconds(Mathf.Max(delay, minDelay));
+            delay -= Acceleration;
         }
     }
 
@@ -371,104 +277,31 @@ public class FreeplayCommander
     {
         MonoBehaviour button = (MonoBehaviour)_moduleCountDecrementField.GetValue(FreeplayDevice);
         MonoBehaviour buttonSelectable = (MonoBehaviour)button.GetComponent(_selectableType);
+        float delay = startDelay;
         while (Input.GetKey(KeyCode.LeftArrow))
         {
             SelectObject(buttonSelectable);
-            yield return new WaitForSeconds(0.01f);
+            yield return new WaitForSeconds(Mathf.Max(delay, minDelay));
+            delay -= Acceleration;
         }
     }
 
-
-    public IEnumerator SetBombTimer(string hours, string mins, string secs)
+    public bool IsDualBombInstalled()
     {
-        int hoursInt = 0;
-        if (!string.IsNullOrEmpty(hours) && !int.TryParse(hours, out hoursInt))
-        {
-            yield break;
-        }
-
-        int minutes = 0;
-        if (!int.TryParse(mins, out minutes))
-        {
-            yield break;
-        }
-
-        int seconds = 0;
-        if (!string.IsNullOrEmpty(secs) && 
-            (!int.TryParse(secs, out seconds) || seconds >= 60) )
-        {
-            yield break;
-        }
-
-        int timeIndex = (hoursInt * 120) + (minutes * 2) + (seconds / 30);
-
-        //Double the available free play time. (The doubling stacks with the Multiple bombs module installed)
-        float originalMaxTime = (float) _MAXSECONDSFIELD.GetValue(null);
-        int maxModules = (int)_maxModuleField.GetValue(FreeplayDevice);
-        int multiplier = IsDualBombInstalled() ? 3 : 1;
-        float newMaxTime = 600f + ((maxModules - 1) * multiplier * 60);
-        _MAXSECONDSFIELD.SetValue(null, newMaxTime);
-
-        object currentSettings = _currentSettingsField.GetValue(FreeplayDevice);
-        float currentTime = (float)_timeField.GetValue(currentSettings);
-        int currentTimeIndex = Mathf.FloorToInt(currentTime) / 30;
-        MonoBehaviour button = timeIndex > currentTimeIndex ? (MonoBehaviour)_timeIncrementField.GetValue(FreeplayDevice) : (MonoBehaviour)_timeDecrementField.GetValue(FreeplayDevice);
-        MonoBehaviour buttonSelectable = (MonoBehaviour)button.GetComponent(_selectableType);
-
-        for (int hitCount = 0; hitCount < Mathf.Abs(timeIndex - currentTimeIndex); ++hitCount)
-        {
-            currentTime = (float)_timeField.GetValue(currentSettings);
-            SelectObject(buttonSelectable);
-            yield return new WaitForSeconds(0.1f);
-            if (Mathf.FloorToInt(currentTime) == Mathf.FloorToInt((float) _timeField.GetValue(currentSettings)))
-                break;
-        }
-
-        //Restore original max time, just in case Multiple bombs module was NOT installed, to avoid false detection.
-        _MAXSECONDSFIELD.SetValue(null, originalMaxTime);
+        float seconds_to_solve = (float)_MAXSECONDSFIELD.GetValue(null);
+        return seconds_to_solve > 600.0f;
     }
 
-    public IEnumerator SetBombCount(string bombs)
+    public IEnumerator SetBombCount()
     {
-        int bombCount = 0;
-        if (!int.TryParse(bombs, out bombCount))
-        {
-            yield break;
-        }
-
-        if (!IsDualBombInstalled())
-        {
-            yield break;
-        }
-
-        SelectObject(bombCount <= 1 ? SelectableChildren[2] : SelectableChildren[3]);
+        _bombCount = Input.GetKeyDown(KeyCode.LeftArrow) ? 1 : 2;
+        SelectObject(Input.GetKeyDown(KeyCode.LeftArrow) ? SelectableChildren[2] : SelectableChildren[3]);
+        yield return null;
     }
 
-    public IEnumerator SetBombModules(string mods)
+    public IEnumerator SetNeedy()
     {
-        int moduleCount = 0;
-        if (!int.TryParse(mods, out moduleCount))
-        {
-            yield break;
-        }
-
-        object currentSettings = _currentSettingsField.GetValue(FreeplayDevice);
-        int currentModuleCount = (int)_moduleCountField.GetValue(currentSettings);
-        MonoBehaviour button = moduleCount > currentModuleCount ? (MonoBehaviour)_moduleCountIncrementField.GetValue(FreeplayDevice) : (MonoBehaviour)_moduleCountDecrementField.GetValue(FreeplayDevice);
-        MonoBehaviour buttonSelectable = (MonoBehaviour)button.GetComponent(_selectableType);
-
-        for (int hitCount = 0; hitCount < Mathf.Abs(moduleCount - currentModuleCount); ++hitCount)
-        {
-            int lastModuleCount = (int)_moduleCountField.GetValue(currentSettings);
-            SelectObject(buttonSelectable);
-            yield return new WaitForSeconds(0.1f);
-            if (lastModuleCount == (int)_moduleCountField.GetValue(currentSettings))
-                yield break;
-        }
-    }
-
-    public void SetNeedy(bool on = true)
-    {
+        bool on = !Input.GetKeyDown(KeyCode.LeftArrow);
         object currentSettings = _currentSettingsField.GetValue(FreeplayDevice);
         bool hasNeedy = (bool)_hasNeedyField.GetValue(currentSettings);
         if (hasNeedy != on)
@@ -477,10 +310,12 @@ public class FreeplayCommander
             SelectObject( (MonoBehaviour)needyToggle.GetComponent(_selectableType) );
             
         }
+        yield return null;
     }
 
-    public void SetHardcore(bool on = true)
+    public IEnumerator SetHardcore()
     {
+        bool on = !Input.GetKeyDown(KeyCode.LeftArrow);
         object currentSettings = _currentSettingsField.GetValue(FreeplayDevice);
         bool isHardcore = (bool)_isHardCoreField.GetValue(currentSettings);
         if (isHardcore != on)
@@ -488,10 +323,12 @@ public class FreeplayCommander
             MonoBehaviour hardcoreToggle = (MonoBehaviour)_hardcoreToggleField.GetValue(FreeplayDevice);
             SelectObject( (MonoBehaviour)hardcoreToggle.GetComponent(_selectableType) );
         }
+        yield return null;
     }
 
-    public void SetModsOnly(bool on = true)
+    public IEnumerator SetModsOnly()
     {
+        bool on = !Input.GetKeyDown(KeyCode.LeftArrow);
         object currentSettings = _currentSettingsField.GetValue(FreeplayDevice);
         bool onlyMods = (bool)_onlyModsField.GetValue(currentSettings);
         if (onlyMods != on)
@@ -499,6 +336,7 @@ public class FreeplayCommander
             MonoBehaviour modsToggle = (MonoBehaviour)_modsOnlyToggleField.GetValue(FreeplayDevice);
             SelectObject( (MonoBehaviour)modsToggle.GetComponent(_selectableType) );
         }
+        yield return null;
     }
 
     public void StartBomb()
