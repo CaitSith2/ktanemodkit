@@ -37,8 +37,6 @@ public class FreeplayCommander
         _modsOnlyToggleField = _freeplayDeviceType.GetField("ModsOnly", BindingFlags.Public | BindingFlags.Instance);
         _startButtonField = _freeplayDeviceType.GetField("StartButton", BindingFlags.Public | BindingFlags.Instance);
         _currentSettingsField = _freeplayDeviceType.GetField("currentSettings", BindingFlags.NonPublic | BindingFlags.Instance);
-        _maxModuleField = _freeplayDeviceType.GetField("maxModules", BindingFlags.NonPublic | BindingFlags.Instance);
-        _MAXSECONDSFIELD = _freeplayDeviceType.GetField("MAX_SECONDS_TO_SOLVE", BindingFlags.Public | BindingFlags.Static);
 
         _freeplaySettingsType = ReflectionHelper.FindType("Assets.Scripts.Settings.FreeplaySettings");
         _moduleCountField = _freeplaySettingsType.GetField("ModuleCount", BindingFlags.Public | BindingFlags.Instance);
@@ -114,11 +112,6 @@ public class FreeplayCommander
         {
             yield break;
         }
-        if (Input.GetKeyDown(KeyCode.KeypadEnter) || Input.GetKeyDown(KeyCode.Return))
-        {
-            StartBomb();
-            yield break;
-        }
         int holdState = (int)_holdStateProperty.GetValue(FloatingHoldable, null);
         if (holdState != 0)
         {
@@ -129,17 +122,18 @@ public class FreeplayCommander
             ToggleIndex();
             yield break;
         }
+        if (Input.GetKeyDown(KeyCode.KeypadEnter) || Input.GetKeyDown(KeyCode.Return))
+        {
+            StartBomb();
+            yield break;
+        }
         if (Input.GetKeyDown(KeyCode.UpArrow))
         {
             _index--;
             if (_index == freeplaySelection.Bombs && !IsDualBombInstalled())
                 _index = freeplaySelection.Timer;
             if (_index < freeplaySelection.Timer)
-            {
-                _index = freeplaySelection.Timer;
-                LetGoFreeplayDevice();
-                yield break;
-            }
+                _index = freeplaySelection.ModsOnly;
             ToggleIndex();
             yield break;
         }
@@ -149,7 +143,7 @@ public class FreeplayCommander
             if (_index == freeplaySelection.Bombs && !IsDualBombInstalled())
                 _index = freeplaySelection.Modules;
             if (_index > freeplaySelection.ModsOnly)
-                _index = freeplaySelection.ModsOnly;
+                _index = freeplaySelection.Timer;
             ToggleIndex();
             yield break;
         }
@@ -191,6 +185,7 @@ public class FreeplayCommander
         object currentSettings = _currentSettingsField.GetValue(FreeplayDevice);
         int currentModuleCount = (int)_moduleCountField.GetValue(currentSettings);
         float currentTime = (float) _timeField.GetValue(currentSettings);
+        bool onlyMods = (bool) _onlyModsField.GetValue(currentSettings);
         switch (_index)
         {
             case freeplaySelection.Timer:
@@ -225,7 +220,21 @@ public class FreeplayCommander
             case freeplaySelection.ModsOnly:
                 MonoBehaviour modsToggle = (MonoBehaviour)_modsOnlyToggleField.GetValue(FreeplayDevice);
                 SelectObject((MonoBehaviour)modsToggle.GetComponent(_selectableType));
+                bool onlyModsCurrent = (bool) _onlyModsField.GetValue(currentSettings);
                 SelectObject((MonoBehaviour)modsToggle.GetComponent(_selectableType));
+                if (onlyMods == onlyModsCurrent )
+                {
+                    if (Input.GetKey(KeyCode.DownArrow))
+                    {
+                        _index = freeplaySelection.Timer;
+                        goto case freeplaySelection.Timer;
+                    }
+                    else
+                    {
+                        _index = freeplaySelection.Hardcore;
+                        goto case freeplaySelection.Hardcore;
+                    }
+                }
                 break;
         }
     }
@@ -288,8 +297,7 @@ public class FreeplayCommander
 
     public bool IsDualBombInstalled()
     {
-        float seconds_to_solve = (float)_MAXSECONDSFIELD.GetValue(null);
-        return seconds_to_solve > 600.0f;
+        return SelectableChildren.Length == 11;
     }
 
     public IEnumerator SetBombCount()
@@ -424,8 +432,6 @@ public class FreeplayCommander
     private static FieldInfo _modsOnlyToggleField = null;
     private static FieldInfo _startButtonField = null;
     private static FieldInfo _currentSettingsField = null;
-    private static FieldInfo _maxModuleField = null;
-    private static FieldInfo _MAXSECONDSFIELD = null;
 
     private static Type _freeplaySettingsType = null;
     private static FieldInfo _moduleCountField = null;

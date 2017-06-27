@@ -34,30 +34,11 @@ public class FreePlayHelper : MonoBehaviour
 	        Input.GetKeyDown(KeyCode.KeypadEnter) || 
             Input.GetKeyDown(KeyCode.Return))
 	    {
-	        StopCoroutine(_freeplayCommander.HandleInput());
-	        StartCoroutine(_freeplayCommander.HandleInput());
+	        if (_handler != null)
+	            StopCoroutine(_handler);
+	        _handler = _freeplayCommander.HandleInput();
+	        StartCoroutine(_handler);
         }
-	    /*if (Input.GetKeyDown(KeyCode.UpArrow))
-	    {
-            DebugLog("Incrementing Bomb Timer");
-	        StartCoroutine(_freeplayCommander.IncrementBombTimer());
-	    }
-	    else if (Input.GetKeyDown(KeyCode.DownArrow))
-	    {
-	        DebugLog("Decrementing Bomb Timer");
-            StartCoroutine(_freeplayCommander.DecrementBombTimer());
-	    }
-	    else if (Input.GetKeyDown(KeyCode.RightArrow))
-	    {
-	        DebugLog("Incrementing Module Count");
-            StartCoroutine(_freeplayCommander.IncrementModuleCount());
-	    }
-	    else if (Input.GetKeyDown(KeyCode.LeftArrow))
-	    {
-	        DebugLog("Decrementing Module Count");
-	        StartCoroutine(_freeplayCommander.DecrementModuleCount());
-	    }
-        */
 	}
 
     void OnStateChange(KMGameInfo.State state)
@@ -71,6 +52,7 @@ public class FreePlayHelper : MonoBehaviour
         else
         {
             _freeplayCommander = null;
+            _handler = null;
         }
     }
 

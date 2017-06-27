@@ -13,5 +13,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: FreeplayTimerModuleHelper
   title: Freeplay Timer and Module Helper
-  version: v1.0
+  version: v1.1
   outputFolder: H:\SteamLibrary\SteamApps\common\Keep Talking and Nobody Explodes\mods

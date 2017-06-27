@@ -11,7 +11,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5cf2299c8864afe4ab42466f546ae20d, type: 3}
   m_Name: WorkshopItem
   m_EditorClassIdentifier: 
-  WorkshopPublishedFileID: 0
+  WorkshopPublishedFileID: 956081852
   Title: Freeplay Timer and Module Helper
   Description: 'This service helps out for those large bomb cases that have been released
     recently, so that you don''t have to keep clicking your mouse button over and
@@ -20,20 +20,21 @@ MonoBehaviour:
 
     The controls are as follows
 
-    Up arrow - Increase timer.
+    Up/Down arrow - Selects the desired freeplay option
 
-    Down arrow - Decrease timer.
+    Left/Right arrows - Sets the option.
 
-    Right arrow - Increase module count
-
-    Left arrow - Decrease module count.
+    Enter - Starts the bomb.  (same as if you clicked the Start button)
 
 
-    Note - The displayed text is there for illustrative purposes only.  It is not
-    actually present in the module itself.
+    If the freeplay case is currently not open, pressing any of those above keys will
+    open the freeplay case, and the Timer option will be selected.
 
-    For as long as the given arrow key is held, the specific thing will increase/decrease
-    far faster than you can click the mouse on that same button to do the same result.
+
+    For as long as Left/Right is held while modules or time is selected, that option
+    will increase/decrease continuously, starting slowly, but get faster till it reaches
+    top speed, the longer you hold that key.  This is definitely faster than clicking
+    your mouse button over and over to get to the desired high setting.
 
 
     Credits to at_bash for the freeplay reflection code from twitch-plays on which
