@@ -9,7 +9,7 @@ using Random = UnityEngine.Random;
 public class MultipleWidgets : MonoBehaviour
 {
 
-    public TextMesh WidgetText;
+    public GameObject[] Batteries;
     public TextMesh KeyText;
     public TextMesh PortText;
     public TextMesh IndicatorText;
@@ -25,7 +25,7 @@ public class MultipleWidgets : MonoBehaviour
     private PortType _presentPorts = (PortType) 0;
 
     private bool _batteries = false;
-    private BattryType _batteryType = BattryType.NineVolt;
+    private BatteryType _batteryType = BatteryType.NineVolt;
 
     private bool _twofactor = false;
     private int _key;
@@ -40,41 +40,60 @@ public class MultipleWidgets : MonoBehaviour
     private FieldInfo _indicatorLabelsField = null;
     private List<string> _knownIndicators = null;
 
-    void Start ()
-	{
-	    GetComponent<KMWidget>().OnQueryRequest += GetQueryResponse;
-	    GetComponent<KMWidget>().OnWidgetActivate += Activate;
+    void Awake()
+    {
+        PortText.text = string.Empty;
+        IndicatorText.text = string.Empty;
+        KeyText.text = string.Empty;
 
-	    _indicatorWidgetType = ReflectionHelper.FindType("IndicatorWidget");
-	    _indicatorLabelsField = _indicatorWidgetType.GetField("Labels", BindingFlags.Public | BindingFlags.Static);
-	    _knownIndicators = (List<string>)_indicatorLabelsField.GetValue(null);
+        foreach (GameObject battery in Batteries)
+        {
+            battery.SetActive(false);
+        }
 
-        List<int> WidgetSet = new List<int> {0,1,2,3};
-	    for (var i = 0; i < 2; i++)
-	    {
-	        var widget = WidgetSet[Random.Range(0, WidgetSet.Count)];
-	        WidgetSet.Remove(widget);
-	        if (widget == 0)
-	        {
-	            _indicator = true;
-	            SetIndicators();
-	        }
+        GetComponent<KMWidget>().OnQueryRequest += GetQueryResponse;
+        GetComponent<KMWidget>().OnWidgetActivate += Activate;
+
+        _indicatorWidgetType = ReflectionHelper.FindType("IndicatorWidget");
+        _indicatorLabelsField = _indicatorWidgetType.GetField("Labels", BindingFlags.Public | BindingFlags.Static);
+        _knownIndicators = (List<string>)_indicatorLabelsField.GetValue(null);
+
+        string[] widgetTypes =
+        {
+            "Indicator", "Ports", "Batteries", "TwoFactor"
+        };
+        List<int> WidgetSet = new List<int> { 0, 1, 2, 3 };
+        for (var i = 0; i < 2; i++)
+        {
+            var widget = WidgetSet[Random.Range(0, WidgetSet.Count)];
+            WidgetSet.Remove(widget);
+            Debug.LogFormat("[MultipleWidgets] Widget #{0} = {1}", i + 1, widgetTypes[widget]);
+            if (widget == 0)
+            {
+                _indicator = true;
+                SetIndicators();
+            }
             else if (widget == 1)
-	        {
-	            _ports = true;
-	            SetPorts();
-	        }
+            {
+                _ports = true;
+                SetPorts();
+            }
             else if (widget == 2)
-	        {
-	            _batteries = true;
-	            SetBatteries();
-	        }
-	        else
-	        {
-	            _twofactor = true;
+            {
+                _batteries = true;
+                SetBatteries();
+            }
+            else
+            {
+                _twofactor = true;
                 SetTwoFactor();
-	        }
-	    }
+            }
+        }
+    }
+
+    void Start ()
+    {
+        
 	}
 
     void SetIndicators()
@@ -87,7 +106,7 @@ public class MultipleWidgets : MonoBehaviour
                 KnownIndicators.Remove(exsting);
         }
         _indicatorLabel = KnownIndicators.Count > 0 ? KnownIndicators[Random.Range(0, KnownIndicators.Count)] : "NLL";
-        Debug.LogFormat("Randomizing Indicator Widget: {0} {1}", (!_indicatorLight) ? "unlit" : "lit", _indicatorLabel);
+        Debug.LogFormat("[IndicatorWidget] Randomizing Indicator Widget: {0} {1}", (!_indicatorLight) ? "unlit" : "lit", _indicatorLabel);
         IndicatorText.text = string.Format("{0} {1}", (!_indicatorLight) ? "unlit" : "lit", _indicatorLabel);
     }
 
@@ -107,8 +126,20 @@ public class MultipleWidgets : MonoBehaviour
                 _presentPorts |= port;
             }
         }
-        Debug.LogFormat("Randomizing Port Widget: {0}", _presentPorts);
-        PortText.text = "Ports" + Environment.NewLine + _presentPorts.ToString();
+
+        string presentPorts = string.Empty;
+        for (var i = (int) PortType.Component; i > 0; i >>= 1)
+        {
+            if (((int) _presentPorts & i) == i)
+            {
+                if (presentPorts != string.Empty)
+                    presentPorts += ", ";
+                presentPorts += ((PortType) i).ToString();
+            }
+        }
+
+        Debug.LogFormat("[PortWidget] Randomizing Port Widget: {0}", presentPorts);
+        PortText.text = "Ports" + Environment.NewLine + (presentPorts == string.Empty ? "Empty Port Plate" : presentPorts);
     }
 
     public bool IsPortPresent(PortType port)
@@ -118,38 +149,14 @@ public class MultipleWidgets : MonoBehaviour
 
     void SetBatteries()
     {
-        _batteryType = (BattryType) Random.Range(0, 4);
-        Debug.LogFormat("Randomizing Battery Widget: {0}", GetNumberOfBatteries());
-        switch (_batteryType)
-        {
-            case BattryType.CR2032:
-                WidgetText.text = "2 x CR2032 Batteries";
-                break;
-            case BattryType.NineVolt:
-                WidgetText.text = "1 x 9-Volt Battery";
-                break;
-            case BattryType.TripleA:
-                WidgetText.text = "3 x AAA Batteries";
-                break;
-            default:
-                WidgetText.text = "Empty Battery Holder";
-                break;
-        }
+        _batteryType = (BatteryType) Random.Range(0, Batteries.Length);
+        Debug.LogFormat("[BatteryWidget] Randomizing Battery Widget: {0}", GetNumberOfBatteries());
+        Batteries[(int) _batteryType].SetActive(true);
     }
 
     int GetNumberOfBatteries()
     {
-        switch (_batteryType)
-        {
-            case BattryType.NineVolt:
-                return 1;
-            case BattryType.CR2032:
-                return 2;
-            case BattryType.TripleA:
-                return 3;
-            default:
-                return 0;
-        }
+        return (int) _batteryType;
     }
 
     void SetTwoFactor()
@@ -176,14 +183,16 @@ public class MultipleWidgets : MonoBehaviour
 
 
     void Update () {
-	    _timeElapsed += Time.deltaTime;
+        if (_twofactor)
+        {
+            _timeElapsed += Time.deltaTime;
 
-	    // ReSharper disable once InvertIf
-	    if (_timeElapsed >= TimerLength)
-	    {
-	        _timeElapsed = 0f;
-	        UpdateKey();
-	    }
+            if (_timeElapsed >= TimerLength)
+            {
+                _timeElapsed = 0f;
+                UpdateKey();
+            }
+        }
     }
 
     public void Activate()
@@ -289,12 +298,13 @@ public class MultipleWidgets : MonoBehaviour
         return "";
     }
 
-    public enum BattryType
+    public enum BatteryType
     {
         Empty,
         NineVolt,
-        CR2032,
-        TripleA,
+        AAx2,
+        _9Vx1_AAx2,
+        AAx4
     }
 
     public enum PortType
