@@ -2,17 +2,49 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using Newtonsoft.Json;
 using Random = UnityEngine.Random;
 
 public class MultipleWidgets : MonoBehaviour
 {
+    private class PortSet
+    {
+        public GameObject port;
+        public PortType type;
+    }
+
+    private List<List<PortSet>> _portGroups;
 
     public GameObject[] Batteries;
-    public TextMesh KeyText;
-    public TextMesh PortText;
+    public GameObject[] BatteryHolders;
+    public Transform[] AACells;
+    public Transform NineVoltCell;
+
+    public GameObject TwoFactor;
+    public TextMesh[] TwoFactorDigits;
+    public GameObject Ports;
+
+    public GameObject ParallelPort;
+    public GameObject SerialPort;
+
+    public GameObject PS2Port;
+    public GameObject DVIPort;
+    public GameObject RJ45Port;
+    public GameObject StereoRCAPort;
+
+    public GameObject HDMIPort;
+    public GameObject USBPort;
+    public GameObject ComponentVideoPort;
+
+    public GameObject ACPort;
+    public GameObject PCMCIAPort;
+    public GameObject VGAPort;
+
+    public GameObject Indicator;
     public TextMesh IndicatorText;
+    public GameObject[] IndicatorLights;
 
     public KMBombInfo Info;
     public AudioClip Notify;
@@ -20,6 +52,7 @@ public class MultipleWidgets : MonoBehaviour
     private bool _indicator = false;
     private string _indicatorLabel;
     private bool _indicatorLight;
+    private int _indicatorLightColor;
 
     private bool _ports = false;
     private PortType _presentPorts = (PortType) 0;
@@ -33,30 +66,110 @@ public class MultipleWidgets : MonoBehaviour
 
     private const float TimerLength = 60.0f;
 
-    public static string WidgetQueryTwofactor = "twofactor";
-    public static string WidgetTwofactorKey = "twofactor_key";
-
     private Type _indicatorWidgetType = null;
     private FieldInfo _indicatorLabelsField = null;
     private List<string> _knownIndicators = null;
 
     void Awake()
     {
-        PortText.text = string.Empty;
+        _portGroups = new List<List<PortSet>>
+        {
+            new List<PortSet> //Vanilla set 1
+            {
+                new PortSet {port = ParallelPort, type = PortType.Parallel },
+                new PortSet {port = SerialPort, type = PortType.Serial },
+            },
+            new List<PortSet> //Vanilla set 2
+            {
+                new PortSet {port = PS2Port, type = PortType.PS2 },
+                new PortSet {port = DVIPort, type = PortType.DVI },
+                new PortSet {port = RJ45Port, type = PortType.RJ45 },
+                new PortSet {port = StereoRCAPort, type = PortType.StereoRCA },
+            },
+            new List<PortSet> //New Port
+            {
+                new PortSet {port = HDMIPort, type = PortType.HDMI },
+                new PortSet {port = USBPort, type = PortType.USB },
+                new PortSet {port = ComponentVideoPort, type = PortType.Component },
+                new PortSet {port = ACPort, type = PortType.AC },
+                new PortSet {port = PCMCIAPort, type = PortType.PCMCIA },
+                new PortSet {port = VGAPort, type = PortType.VGA },
+            },
+            new List<PortSet> //Monitor
+            {
+                new PortSet {port = DVIPort, type = PortType.DVI },
+                new PortSet {port = StereoRCAPort, type = PortType.StereoRCA },
+                new PortSet {port = HDMIPort, type = PortType.HDMI },
+                new PortSet {port = ComponentVideoPort, type = PortType.Component },
+                new PortSet {port = VGAPort, type = PortType.VGA },
+            },
+            new List<PortSet> //Computer related
+            {
+                new PortSet {port = ParallelPort, type = PortType.Parallel },
+                new PortSet {port = SerialPort, type = PortType.Serial },
+                new PortSet {port = PCMCIAPort, type = PortType.PCMCIA },
+                new PortSet {port = VGAPort, type = PortType.VGA },
+                new PortSet {port = PS2Port, type = PortType.PS2 },
+                new PortSet {port = RJ45Port, type = PortType.RJ45 },
+                new PortSet {port = USBPort, type = PortType.USB },
+                new PortSet {port = ACPort, type = PortType.AC },
+            }
+        };
+
+        Ports.SetActive(false);
+        Indicator.SetActive(false);
         IndicatorText.text = string.Empty;
-        KeyText.text = string.Empty;
+        TwoFactor.SetActive(false);
 
         foreach (GameObject battery in Batteries)
         {
             battery.SetActive(false);
         }
 
+        foreach (GameObject holder in BatteryHolders)
+        {
+            holder.SetActive(false);
+        }
+
+        foreach (GameObject light in IndicatorLights)
+        {
+            light.SetActive(false);
+        }
+
+        foreach (var portGroup in _portGroups)
+        {
+            foreach (var set in portGroup)
+            {
+                set.port.SetActive(false);
+            }
+        }
+
         GetComponent<KMWidget>().OnQueryRequest += GetQueryResponse;
         GetComponent<KMWidget>().OnWidgetActivate += Activate;
 
         _indicatorWidgetType = ReflectionHelper.FindType("IndicatorWidget");
-        _indicatorLabelsField = _indicatorWidgetType.GetField("Labels", BindingFlags.Public | BindingFlags.Static);
-        _knownIndicators = (List<string>)_indicatorLabelsField.GetValue(null);
+        if (_indicatorWidgetType != null)
+        {
+            _indicatorLabelsField = _indicatorWidgetType.GetField("Labels", BindingFlags.Public | BindingFlags.Static);
+            _knownIndicators = (List<string>) _indicatorLabelsField.GetValue(null);
+        }
+        else
+        {
+            _knownIndicators = new List<string>
+            {
+                "CLR",
+                "IND",
+                "TRN",
+                "FRK",
+                "CAR",
+                "FRQ",
+                "NSA",
+                "SIG",
+                "MSA",
+                "SND",
+                "BOB"
+            };
+        }
 
         string[] widgetTypes =
         {
@@ -91,15 +204,15 @@ public class MultipleWidgets : MonoBehaviour
         }
     }
 
-    void Start ()
-    {
-        
-	}
-
     void SetIndicators()
     {
+        Indicator.SetActive(true);
         var KnownIndicators = new List<string>(_knownIndicators);
         _indicatorLight = Random.value > 0.4f;
+        if (_indicatorLight)
+        {
+            _indicatorLightColor = Random.Range(1, IndicatorLights.Length);
+        }
         foreach (var exsting in Info.GetIndicators())
         {
             if (KnownIndicators.Contains(exsting))
@@ -107,23 +220,21 @@ public class MultipleWidgets : MonoBehaviour
         }
         _indicatorLabel = KnownIndicators.Count > 0 ? KnownIndicators[Random.Range(0, KnownIndicators.Count)] : "NLL";
         Debug.LogFormat("[IndicatorWidget] Randomizing Indicator Widget: {0} {1}", (!_indicatorLight) ? "unlit" : "lit", _indicatorLabel);
-        IndicatorText.text = string.Format("{0} {1}", (!_indicatorLight) ? "unlit" : "lit", _indicatorLabel);
+        Debug.LogFormat("[MultipleWidgets] Indicator Light Color is {0}", IndicatorLights[_indicatorLightColor].name);
+        IndicatorText.text = _indicatorLabel;
+        IndicatorLights[_indicatorLightColor].SetActive(true);
     }
 
     void SetPorts()
     {
-        List<List<PortType>> portGroups = new List<List<PortType>>
-        {
-            new List<PortType> {PortType.Parallel, PortType.Serial},
-            new List<PortType> {PortType.DVI, PortType.PS2, PortType.RJ45, PortType.StereoRCA},
-            new List<PortType> {PortType.HDMI, PortType.USB, PortType.Component}
-        };
-        List<PortType> ports = portGroups[Random.Range(0, portGroups.Count)];
-        foreach (PortType port in ports)
+        Ports.SetActive(true);
+        var portset = _portGroups[Random.Range(0, _portGroups.Count)];
+        foreach (var set in portset)
         {
             if (Random.value > 0.5f)
             {
-                _presentPorts |= port;
+                _presentPorts |= set.type;
+                set.port.SetActive(true);
             }
         }
 
@@ -139,7 +250,7 @@ public class MultipleWidgets : MonoBehaviour
         }
 
         Debug.LogFormat("[PortWidget] Randomizing Port Widget: {0}", presentPorts);
-        PortText.text = "Ports" + Environment.NewLine + (presentPorts == string.Empty ? "Empty Port Plate" : presentPorts);
+        
     }
 
     public bool IsPortPresent(PortType port)
@@ -150,8 +261,17 @@ public class MultipleWidgets : MonoBehaviour
     void SetBatteries()
     {
         _batteryType = (BatteryType) Random.Range(0, Batteries.Length);
+        var holder = (int)_batteryType - 1;
+        if (holder < 0) holder = Random.Range(0, BatteryHolders.Length);
         Debug.LogFormat("[BatteryWidget] Randomizing Battery Widget: {0}", GetNumberOfBatteries());
         Batteries[(int) _batteryType].SetActive(true);
+        BatteryHolders[holder].SetActive(true);
+
+        foreach (var cell in AACells)
+        {
+            cell.Rotate(new Vector3(0, 0, Random.Range(0, 360.0f)));
+        }
+        NineVoltCell.Rotate(new Vector3(0, 0, Random.value < 0.5f ? 0 : 180));
     }
 
     int GetNumberOfBatteries()
@@ -162,6 +282,7 @@ public class MultipleWidgets : MonoBehaviour
     void SetTwoFactor()
     {
         GenerateKey();
+        TwoFactor.SetActive(true);
     }
 
     private void GenerateKey()
@@ -171,7 +292,13 @@ public class MultipleWidgets : MonoBehaviour
 
     private void DisplayKey()
     {
-        KeyText.text = _key.ToString() + ".";
+        var text = _key.ToString("000000");
+        var zero = true;
+        for (var i = 0; i < text.Length; i++)
+        {
+            zero &= text.Substring(i, 1) == "0";
+            TwoFactorDigits[i].text = zero ? "" : text.Substring(i, 1);
+        }
     }
 
     void UpdateKey()
@@ -244,6 +371,21 @@ public class MultipleWidgets : MonoBehaviour
             });
         }
 
+        if (queryKey == (KMBombInfo.QUERYKEY_GET_INDICATOR + "Color") && _indicator)
+        {
+            return JsonConvert.SerializeObject(new Dictionary<string, string>
+            {
+                {
+                    "label",
+                    _indicatorLabel
+                },
+                {
+                    "color",
+                    IndicatorLights[_indicatorLightColor].name
+                }
+            });
+        }
+
         if (queryKey == KMBombInfo.QUERYKEY_GET_PORTS && _ports)
         {
             Dictionary<string, List<string>> dictionary = new Dictionary<string, List<string>>();
@@ -284,13 +426,25 @@ public class MultipleWidgets : MonoBehaviour
             {
                 list.Add("ComponentVideo");
             }
+            if (IsPortPresent(PortType.PCMCIA))
+            {
+                list.Add("PCMCIA");
+            }
+            if (IsPortPresent(PortType.VGA))
+            {
+                list.Add("PCA");
+            }
+            if (IsPortPresent(PortType.AC))
+            {
+                list.Add("AC");
+            }
             dictionary.Add("presentPorts", list);
             return JsonConvert.SerializeObject(dictionary);
         }
 
-        if (queryKey == WidgetQueryTwofactor && _twofactor)
+        if (queryKey == KMBombInfoExtensions.WidgetQueryTwofactor && _twofactor)
         {
-            var response = new Dictionary<string, int> { { WidgetTwofactorKey, _key } };
+            var response = new Dictionary<string, int> { {KMBombInfoExtensions.WidgetTwofactorKey, _key } };
             var serializedResponse = JsonConvert.SerializeObject(response);
 
             return serializedResponse;
@@ -320,5 +474,16 @@ public class MultipleWidgets : MonoBehaviour
         HDMI = 64,
         USB = 128,
         Component = 256,
+
+        AC = 512,
+        PCMCIA = 1024,
+        VGA = 2048
     }
+}
+
+static class Ext
+{
+    public static Color WithAlpha(this Color color, float alpha) { return new Color(color.r, color.g, color.b, alpha); }
+
+    public static T[] NewArray<T>(params T[] array) { return array; }
 }

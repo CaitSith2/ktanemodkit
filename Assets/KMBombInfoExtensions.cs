@@ -1,10 +1,14 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
 
 public static class KMBombInfoExtensions
 {
     #region JSON Types
+
+    public static string WidgetQueryTwofactor = "twofactor";
+    public static string WidgetTwofactorKey = "twofactor_key";
 
     private class IndicatorJSON
     {
@@ -14,9 +18,20 @@ public static class KMBombInfoExtensions
         public bool IsOn()
         {
             bool isOn = false;
-            bool.TryParse(on, out isOn);
+            Boolean.TryParse(on, out isOn);
             return isOn;
         }
+    }
+
+    private class ColorIndicatorJSON
+    {
+        public string label = null;
+        public string color = null;
+    }
+
+    private class TwoFactorJSON
+    {
+        public int twofactor_key = 0;
     }
 
     private class BatteryJSON
@@ -41,11 +56,15 @@ public static class KMBombInfoExtensions
     public enum KnownBatteryType
     {
         Unknown = 0,
+        Empty = 0,
         D = 1,
 
         //D batteries currently always come as 1 battery in the one battery holder
         AA = 2,
         //AA batteries currently always comes in 2 batteries in the one battery holder
+        
+        NineVolt_AA = 3,
+        AAx4 = 4
     }
 
     public enum KnownPortType
@@ -55,7 +74,13 @@ public static class KMBombInfoExtensions
         PS2,
         RJ45,
         Serial,
-        StereoRCA
+        StereoRCA,
+        ComponentVideo,
+        USB,
+        HDMI,
+        VGA,
+        AC,
+        PCMCIA
     }
 
     public enum KnownIndicatorLabel
@@ -87,6 +112,11 @@ public static class KMBombInfoExtensions
         return GetJSONEntries<IndicatorJSON>(bombInfo, KMBombInfo.QUERYKEY_GET_INDICATOR, null);
     }
 
+    private static IEnumerable<ColorIndicatorJSON> GetColorIndicatorEntries(KMBombInfo bombInfo)
+    {
+        return GetJSONEntries<ColorIndicatorJSON>(bombInfo, KMBombInfo.QUERYKEY_GET_INDICATOR + "Color", null);
+    }
+
     private static IEnumerable<BatteryJSON> GetBatteryEntries(KMBombInfo bombInfo)
     {
         return GetJSONEntries<BatteryJSON>(bombInfo, KMBombInfo.QUERYKEY_GET_BATTERIES, null);
@@ -102,6 +132,11 @@ public static class KMBombInfoExtensions
         return GetJSONEntries<SerialNumberJSON>(bombInfo, KMBombInfo.QUERYKEY_GET_SERIAL_NUMBER, null);
     }
 
+    private static IEnumerable<TwoFactorJSON> GetTwoFactorEntries(KMBombInfo bombInfo)
+    {
+        return GetJSONEntries<TwoFactorJSON>(bombInfo, WidgetQueryTwofactor, null);
+    }
+
     #endregion
 
     #region Public Extensions
@@ -114,6 +149,21 @@ public static class KMBombInfoExtensions
     public static bool IsIndicatorPresent(this KMBombInfo bombInfo, string indicatorLabel)
     {
         return GetIndicatorEntries(bombInfo).Any((x) => indicatorLabel.Equals(x.label));
+    }
+
+    public static bool IsIndicatorColored(this KMBombInfo bombInfo, KnownIndicatorLabel indicatorLabel, string indicatorColor)
+    {
+        return IsIndicatorColored(bombInfo, indicatorLabel.ToString(), indicatorColor);
+    }
+
+    public static bool IsIndicatorColored(this KMBombInfo bombInfo, string indicatorLabel, string indicatorColor)
+    {
+        return GetColoredIndicators(bombInfo, indicatorColor).Any((x) => x.Equals(indicatorLabel));
+    }
+
+    public static bool IsIndicatorColorPresent(this KMBombInfo bombInfo, string indicatorColor)
+    {
+        return GetColoredIndicators(bombInfo, indicatorColor).Any();
     }
 
     public static bool IsIndicatorOn(this KMBombInfo bombInfo, KnownIndicatorLabel indicatorLabel)
@@ -149,6 +199,20 @@ public static class KMBombInfoExtensions
     public static IEnumerable<string> GetOffIndicators(this KMBombInfo bombInfo)
     {
         return GetIndicatorEntries(bombInfo).Where((x) => !x.IsOn()).Select((x) => x.label);
+    }
+
+    public static IEnumerable<string> GetColoredIndicators(this KMBombInfo bombInfo, string color)
+    {
+        if (color.Equals("Black"))
+        {
+            return GetOffIndicators(bombInfo);
+        }
+        if (color.Equals("White"))
+        {
+            return GetOnIndicators(bombInfo);
+        }
+
+        return GetColorIndicatorEntries(bombInfo).Where((x) => x.color.Equals(color)).Select((x) => x.label);
     }
 
     public static int GetBatteryCount(this KMBombInfo bombInfo)
@@ -221,8 +285,22 @@ public static class KMBombInfoExtensions
 
     public static IEnumerable<int> GetSerialNumberNumbers(this KMBombInfo bombInfo)
     {
-        return GetSerialNumber(bombInfo).Where((x) => x >= '0' && x <= '9').Select((y) => int.Parse("" + y));
+        return GetSerialNumber(bombInfo).Where((x) => x >= '0' && x <= '9').Select((y) => Int32.Parse("" + y));
     }
 
+    public static bool IsTwoFactorPresent(this KMBombInfo bombInfo)
+    {
+        return GetTwoFactorCodes(bombInfo).Any();
+    }
+
+    public static int GetTwoFactorCounts(this KMBombInfo bombInfo)
+    {
+        return GetTwoFactorCodes(bombInfo).Count();
+    }
+
+    public static IEnumerable<int> GetTwoFactorCodes(this KMBombInfo bombInfo)
+    {
+        return GetTwoFactorEntries(bombInfo).Select((x) => x.twofactor_key);
+    }
     #endregion
 }
