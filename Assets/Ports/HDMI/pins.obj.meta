@@ -1,22 +1,17 @@
 fileFormatVersion: 2
-guid: 236af97e1687de74d825ada6dfc65c9b
-timeCreated: 1500523241
+guid: 06a8205dfee7f4f4fbfc4a8e72f8659c
+timeCreated: 1500551976
 licenseType: Pro
 ModelImporter:
   serializedVersion: 19
   fileIDToRecycleName:
-    100000: Shell
+    100000: pins
     100002: //RootNode
-    100004: shell
-    400000: Shell
+    400000: pins
     400002: //RootNode
-    400004: shell
-    2300000: Shell
-    2300002: shell
-    3300000: Shell
-    3300002: shell
-    4300000: Shell
-    4300002: shell
+    2300000: pins
+    3300000: pins
+    4300000: pins
   materials:
     importMaterials: 1
     materialName: 0

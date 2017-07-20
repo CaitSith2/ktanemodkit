@@ -6,10 +6,25 @@ ModelImporter:
   serializedVersion: 19
   fileIDToRecycleName:
     100000: //RootNode
+    100002: pins
+    100004: plastic
+    100006: shell
     400000: //RootNode
+    400002: pins
+    400004: plastic
+    400006: shell
     2300000: //RootNode
+    2300002: pins
+    2300004: plastic
+    2300006: shell
     3300000: //RootNode
+    3300002: pins
+    3300004: plastic
+    3300006: shell
     4300000: HDMI
+    4300002: shell
+    4300004: plastic
+    4300006: pins
   materials:
     importMaterials: 1
     materialName: 0

@@ -1,22 +1,17 @@
 fileFormatVersion: 2
-guid: 236af97e1687de74d825ada6dfc65c9b
-timeCreated: 1500523241
+guid: d381427918aa03b4ab07043341d042b7
+timeCreated: 1500551976
 licenseType: Pro
 ModelImporter:
   serializedVersion: 19
   fileIDToRecycleName:
-    100000: Shell
+    100000: shell
     100002: //RootNode
-    100004: shell
-    400000: Shell
+    400000: shell
     400002: //RootNode
-    400004: shell
-    2300000: Shell
-    2300002: shell
-    3300000: Shell
-    3300002: shell
-    4300000: Shell
-    4300002: shell
+    2300000: shell
+    3300000: shell
+    4300000: shell
   materials:
     importMaterials: 1
     materialName: 0
