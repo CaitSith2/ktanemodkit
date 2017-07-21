@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography;
 using Newtonsoft.Json;
 using Random = UnityEngine.Random;
 
@@ -17,6 +18,7 @@ public class MultipleWidgets : MonoBehaviour
 
     private List<List<PortSet>> _portGroups;
 
+    #region public variables
     public GameObject[] Batteries;
     public GameObject[] BatteryHolders;
     public Transform[] AACells;
@@ -37,6 +39,7 @@ public class MultipleWidgets : MonoBehaviour
     public GameObject HDMIPort;
     public GameObject USBPort;
     public GameObject ComponentVideoPort;
+    public GameObject CompositeVideoPort;
 
     public GameObject ACPort;
     public GameObject PCMCIAPort;
@@ -46,8 +49,13 @@ public class MultipleWidgets : MonoBehaviour
     public TextMesh IndicatorText;
     public GameObject[] IndicatorLights;
 
+    public Transform IndicatorTransform;
+    public Transform BatteryTransform;
+    public Transform TwoFactorTransform;
+
     public KMBombInfo Info;
     public AudioClip Notify;
+    #endregion
 
     private bool _indicator = false;
     private string _indicatorLabel;
@@ -72,6 +80,7 @@ public class MultipleWidgets : MonoBehaviour
 
     void Awake()
     {
+        #region Port Sets
         _portGroups = new List<List<PortSet>>
         {
             new List<PortSet> //Vanilla set 1
@@ -94,6 +103,7 @@ public class MultipleWidgets : MonoBehaviour
                 new PortSet {port = ACPort, type = PortType.AC },
                 new PortSet {port = PCMCIAPort, type = PortType.PCMCIA },
                 new PortSet {port = VGAPort, type = PortType.VGA },
+                new PortSet {port = CompositeVideoPort, type = PortType.Composite },
             },
             new List<PortSet> //Monitor
             {
@@ -102,6 +112,7 @@ public class MultipleWidgets : MonoBehaviour
                 new PortSet {port = HDMIPort, type = PortType.HDMI },
                 new PortSet {port = ComponentVideoPort, type = PortType.Component },
                 new PortSet {port = VGAPort, type = PortType.VGA },
+                new PortSet {port = CompositeVideoPort, type = PortType.Composite },
             },
             new List<PortSet> //Computer related
             {
@@ -115,6 +126,7 @@ public class MultipleWidgets : MonoBehaviour
                 new PortSet {port = ACPort, type = PortType.AC },
             }
         };
+        #endregion
 
         Ports.SetActive(false);
         Indicator.SetActive(false);
@@ -202,8 +214,14 @@ public class MultipleWidgets : MonoBehaviour
                 SetTwoFactor();
             }
         }
+
+        if (_indicator && _batteries || (Random.value < 0.5f && !_twofactor))
+        {
+            IndicatorTransform.localPosition = TwoFactorTransform.localPosition;
+        }
     }
 
+    #region Indicators
     void SetIndicators()
     {
         Indicator.SetActive(true);
@@ -224,7 +242,9 @@ public class MultipleWidgets : MonoBehaviour
         IndicatorText.text = _indicatorLabel;
         IndicatorLights[_indicatorLightColor].SetActive(true);
     }
+    #endregion
 
+    #region Ports
     void SetPorts()
     {
         Ports.SetActive(true);
@@ -257,7 +277,9 @@ public class MultipleWidgets : MonoBehaviour
     {
         return (_presentPorts & port) == port;
     }
+    #endregion
 
+    #region Batteries
     void SetBatteries()
     {
         _batteryType = (BatteryType) Random.Range(0, Batteries.Length);
@@ -278,7 +300,9 @@ public class MultipleWidgets : MonoBehaviour
     {
         return (int) _batteryType;
     }
+    #endregion
 
+    #region TwoFactor
     void SetTwoFactor()
     {
         GenerateKey();
@@ -307,6 +331,7 @@ public class MultipleWidgets : MonoBehaviour
         GenerateKey();
         DisplayKey();
     }
+    #endregion
 
 
     void Update () {
@@ -328,18 +353,6 @@ public class MultipleWidgets : MonoBehaviour
         {
             _timeElapsed = 0f;
             DisplayKey();
-        }
-        if (_batteries)
-        {
-            
-        }
-        if (_ports)
-        {
-            
-        }
-        if (_indicator)
-        {
-            
         }
     }
 
@@ -438,6 +451,10 @@ public class MultipleWidgets : MonoBehaviour
             {
                 list.Add("AC");
             }
+            if (IsPortPresent(PortType.Composite))
+            {
+                list.Add("CompositeVideo");
+            }
             dictionary.Add("presentPorts", list);
             return JsonConvert.SerializeObject(dictionary);
         }
@@ -477,7 +494,8 @@ public class MultipleWidgets : MonoBehaviour
 
         AC = 512,
         PCMCIA = 1024,
-        VGA = 2048
+        VGA = 2048,
+        Composite = 4096,
     }
 }
 
