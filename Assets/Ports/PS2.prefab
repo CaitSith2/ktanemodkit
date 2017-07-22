@@ -21,6 +21,7 @@ GameObject:
   - 4: {fileID: 4000011421705446}
   - 33: {fileID: 33000012906582694}
   - 23: {fileID: 23000011710025722}
+  - 114: {fileID: 114000012588138508}
   m_Layer: 0
   m_Name: MeshBody1
   m_TagString: Untagged
@@ -38,6 +39,7 @@ GameObject:
   - 4: {fileID: 4000013582883848}
   - 33: {fileID: 33000014029663232}
   - 23: {fileID: 23000013125574880}
+  - 114: {fileID: 114000013741882036}
   m_Layer: 0
   m_Name: MeshBody3
   m_TagString: Untagged
@@ -85,6 +87,7 @@ GameObject:
   - 4: {fileID: 4000011648420480}
   - 33: {fileID: 33000012195119604}
   - 23: {fileID: 23000011259241174}
+  - 114: {fileID: 114000012709957692}
   m_Layer: 0
   m_Name: MeshBody2
   m_TagString: Untagged
@@ -118,6 +121,7 @@ GameObject:
   - 33: {fileID: 33000011807066188}
   - 136: {fileID: 136000012744995744}
   - 23: {fileID: 23000012208577302}
+  - 114: {fileID: 114000012551720398}
   m_Layer: 0
   m_Name: Cylinder
   m_TagString: Untagged
@@ -395,6 +399,58 @@ MeshFilter:
   m_PrefabInternal: {fileID: 100100000}
   m_GameObject: {fileID: 1000010475491286}
   m_Mesh: {fileID: 4300002, guid: 8fe7e1bfff3c6c54a8c43af374ef6507, type: 3}
+--- !u!114 &114000012551720398
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 1000012709215558}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1005838349, guid: 45b809be76fd7a3468b6f517bced6f28, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ShaderNames:
+  - Standard
+--- !u!114 &114000012588138508
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 1000010333879690}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1005838349, guid: 45b809be76fd7a3468b6f517bced6f28, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ShaderNames:
+  - Standard
+--- !u!114 &114000012709957692
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 1000011282091584}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1005838349, guid: 45b809be76fd7a3468b6f517bced6f28, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ShaderNames:
+  - Standard
+--- !u!114 &114000013741882036
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 1000010475491286}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1005838349, guid: 45b809be76fd7a3468b6f517bced6f28, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ShaderNames:
+  - Standard
 --- !u!136 &136000012744995744
 CapsuleCollider:
   m_ObjectHideFlags: 1

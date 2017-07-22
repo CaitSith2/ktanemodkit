@@ -63,7 +63,7 @@ public static class KMBombInfoExtensions
         AA = 2,
         //AA batteries currently always comes in 2 batteries in the one battery holder
         
-        NineVolt_AA = 3,
+        AAx3 = 3,
         AAx4 = 4
     }
 
@@ -76,6 +76,7 @@ public static class KMBombInfoExtensions
         Serial,
         StereoRCA,
         ComponentVideo,
+        CompositeVideo,
         USB,
         HDMI,
         VGA,
@@ -222,13 +223,28 @@ public static class KMBombInfoExtensions
 
     public static int GetBatteryCount(this KMBombInfo bombInfo, KnownBatteryType batteryType)
     {
-        return GetBatteryEntries(bombInfo).Where((x) => x.numbatteries == (int)batteryType)
+        return GetBatteryCount(bombInfo, (int) batteryType);
+    }
+
+    public static int GetBatteryCount(this KMBombInfo bombInfo, int batteryType)
+    {
+        return GetBatteryEntries(bombInfo).Where((x) => x.numbatteries == batteryType)
             .Sum((x) => x.numbatteries);
     }
 
     public static int GetBatteryHolderCount(this KMBombInfo bombInfo)
     {
         return GetBatteryEntries(bombInfo).Count();
+    }
+
+    public static int GetBatteryHolderCount(this KMBombInfo bombInfo, KnownBatteryType batteryType)
+    {
+        return GetBatteryHolderCount(bombInfo, (int) batteryType);
+    }
+
+    public static int GetBatteryHolderCount(this KMBombInfo bombInfo, int batteryType)
+    {
+        return GetBatteryEntries(bombInfo).Count(x => x.numbatteries == batteryType);
     }
 
     public static int GetPortCount(this KMBombInfo bombInfo)
@@ -270,6 +286,53 @@ public static class KMBombInfoExtensions
     {
         return GetPortEntries(bombInfo)
             .Any((x) => x.presentPorts != null && x.presentPorts.Any((y) => portType.Equals(y)));
+    }
+
+    public static int CountUniquePorts(this KMBombInfo bombInfo)
+    {
+        List<string> ports = new List<string>();
+
+        foreach (var port in GetPorts(bombInfo))
+        {
+            if (!ports.Contains(port))
+                ports.Add(port);
+        }
+
+        return ports.Count;
+    }
+
+    public static bool IsDuplicatePortPresent(this KMBombInfo bombInfo)
+    {
+        List<string> ports = new List<string>();
+        foreach (var port in GetPorts(bombInfo))
+        {
+            if (!ports.Contains(port))
+                ports.Add(port);
+            else
+                return true;
+        }
+        return false;
+    }
+
+    public static bool IsDuplicatePortPresent(this KMBombInfo bombInfo, KnownPortType port)
+    {
+        return IsDuplicatePortPresent(bombInfo, port.ToString());
+    }
+
+    public static bool IsDuplicatePortPresent(this KMBombInfo bombInfo, string port)
+    {
+        return GetPortCount(bombInfo, port) > 1;
+    }
+
+    public static int CountDuplicatePorts(this KMBombInfo bombInfo)
+    {
+        List<string> ports = new List<string>();
+        foreach (var port in GetPorts(bombInfo))
+        {
+            if (!ports.Contains(port) && IsDuplicatePortPresent(bombInfo, port))
+                ports.Add(port);
+        }
+        return ports.Count;
     }
 
     public static string GetSerialNumber(this KMBombInfo bombInfo)

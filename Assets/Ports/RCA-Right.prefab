@@ -21,6 +21,7 @@ GameObject:
   - 4: {fileID: 4000011151736272}
   - 33: {fileID: 33000012555925710}
   - 23: {fileID: 23000012696305482}
+  - 114: {fileID: 114000011639623164}
   m_Layer: 0
   m_Name: Plastic
   m_TagString: Untagged
@@ -39,6 +40,7 @@ GameObject:
   - 33: {fileID: 33000010052115856}
   - 64: {fileID: 64000013823713740}
   - 23: {fileID: 23000010700260538}
+  - 114: {fileID: 114000011442458078}
   m_Layer: 0
   m_Name: Quad
   m_TagString: Untagged
@@ -71,6 +73,7 @@ GameObject:
   - 4: {fileID: 4000010315084252}
   - 33: {fileID: 33000010570674524}
   - 23: {fileID: 23000011246035588}
+  - 114: {fileID: 114000010974259240}
   m_Layer: 0
   m_Name: Shell
   m_TagString: Untagged
@@ -253,3 +256,42 @@ MeshCollider:
   serializedVersion: 2
   m_Convex: 0
   m_Mesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &114000010974259240
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 1000013967544474}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1005838349, guid: 45b809be76fd7a3468b6f517bced6f28, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ShaderNames:
+  - Standard
+--- !u!114 &114000011442458078
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 1000011090649882}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1005838349, guid: 45b809be76fd7a3468b6f517bced6f28, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ShaderNames:
+  - Standard
+--- !u!114 &114000011639623164
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 100100000}
+  m_GameObject: {fileID: 1000011013799744}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1005838349, guid: 45b809be76fd7a3468b6f517bced6f28, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ShaderNames:
+  - Standard
