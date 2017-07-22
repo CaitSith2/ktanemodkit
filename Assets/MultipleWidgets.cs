@@ -378,14 +378,19 @@ public class MultipleWidgets : MonoBehaviour
         {
             setSolution();
             if (!IndicatorText.text.Equals(_indicatorLabel))
+            {
                 DebugLog("Indicator {0} is Encrypted as {1}", _indicatorLabel, IndicatorText.text);
+                IndicatorText.fontSize = 90;
+            }
         }
         else
         {
-            _indicatorLabel = KnownIndicators.Count > 0 ? KnownIndicators[Random.Range(0, KnownIndicators.Count)] : "NLL";
+            _indicatorLabel = KnownIndicators.Count > 0
+                ? KnownIndicators[Random.Range(0, KnownIndicators.Count)]
+                : "NLL";
             IndicatorText.text = _indicatorLabel;
         }
-        
+
         Debug.LogFormat("[IndicatorWidget] Randomizing Indicator Widget: {0} {1}", (!_indicatorLight) ? "unlit" : "lit", _indicatorLabel);
         if(_modSettings.EnableIndicatorColors)
             DebugLog("Indicator Light Color is {0}", IndicatorLights[_indicatorLightColor].name);
@@ -488,7 +493,7 @@ public class MultipleWidgets : MonoBehaviour
             _portList.Add(set.type.ToString());
         }
 
-        DebugLog("Using ports from the following port set: ", portset[0].portSetName);
+        DebugLog("Using ports from the following port set: {0}", portset[0].portSetName);
         Debug.LogFormat("[PortWidget] Randomizing Port Widget: {0}", _presentPorts.ToString());
         GetComponent<KMWidget>().OnQueryRequest += GetPortQueryResponse;
     }
