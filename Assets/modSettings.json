@@ -10,16 +10,21 @@
 	"HowToUse2": "If Enabled, The following battery counts in 1 holder can spawn: 0, 3, 4",
 
 	"EnableIndicatorColors": true,
-	"HodToUse3": "If Enabled, You will see Indicator light colors other than white. These are still treated as On indicators.",
+	"HowToUse3": "If Enabled, You will see Indicator light colors other than white. These are still treated as On indicators.",
 
 	"EnableEncryptedIndicators": false,
 	"MaxEncryptedIndicators": 2,
+	"EncryptionProbability": 0.50,
 	"HowToUse4_1": "If Enabled, Some of the Indicators up to a max count per bomb will be encrypted. Refer to",
 	"HowToUse4_2": "http://steamcommunity.com/sharedfiles/filedetails/?id=1060194010 to see how Encrypted Indicators work.",
 	"HowToUse4_3": "This also stacks with colors if enabled as well.",
+	"HowToUse4_4": "EncryptionProbability is a number between 0.0 to 1.0, and determines how likely the indicators will be encrypted.",
 
-	"DebugModePorts": false,
+	"DebugModeForceAllPortsInCurrentSet": false,
 	"HowToUse5": "This forces the port plates to have every type possible in the given set.",
+
+	"DebugModeForceAllPossiblePorts": false,
+	"HowToUse5_2": "This Forces every port from the first port plate sets to spwan. (This overrides DebugModeForceAllPortsInCurrentSet)",
 
 	"DebugModeBatteries": false,
 	"HowToUse6": "This forces the battery count to be 0, 3 or 4. Never 1 or 2."

@@ -99,6 +99,20 @@ public static class KMBombInfoExtensions
         FRK
     }
 
+    public enum KnownIndicatorColors
+    {
+        Black,
+        White,
+        Blue,
+        Gray,
+        Green,
+        Magenta,
+        Orange,
+        Purple,
+        Red,
+        Yellow,
+    }
+
     private static IEnumerable<T> GetJSONEntries<T>(KMBombInfo bombInfo, string queryKey, string queryInfo)
         where T : new()
     {
@@ -202,6 +216,11 @@ public static class KMBombInfoExtensions
         return GetIndicatorEntries(bombInfo).Where((x) => !x.IsOn()).Select((x) => x.label);
     }
 
+    public static IEnumerable<string> GetColoredIndicators(this KMBombInfo bombInfo, KnownIndicatorColors color)
+    {
+        return GetColoredIndicators(bombInfo, color.ToString());
+    }
+
     public static IEnumerable<string> GetColoredIndicators(this KMBombInfo bombInfo, string color)
     {
         if (color.Equals("Black"))
@@ -210,10 +229,20 @@ public static class KMBombInfoExtensions
         }
         if (color.Equals("White"))
         {
-            return GetOnIndicators(bombInfo);
+            //Can't just return OnIndicators as is, due to the fact that would return ALL of them as White, even when some of them are not white.
+            List<string> OnIndicators = new List<string>(GetOnIndicators(bombInfo));
+            string[] Colors = {"Blue","Gray","Green","Magenta","Orange","Purple","Red","Yellow"};
+            foreach (string c in Colors)
+            {
+                foreach (string indicator in GetColoredIndicators(bombInfo, c))
+                {
+                    OnIndicators.Remove(indicator);
+                }
+            }
+            return OnIndicators;
         }
 
-        return GetColorIndicatorEntries(bombInfo).Where((x) => x.color.Equals(color)).Select((x) => x.label);
+        return GetColorIndicatorEntries(bombInfo).Where((x) => x.color.Equals(color, StringComparison.InvariantCultureIgnoreCase)).Select((x) => x.label);
     }
 
     public static int GetBatteryCount(this KMBombInfo bombInfo)

@@ -7,11 +7,16 @@ ModelImporter:
   fileIDToRecycleName:
     100000: Plastic
     100002: //RootNode
+    100004: MeshBody4
     400000: Plastic
     400002: //RootNode
+    400004: MeshBody4
     2300000: Plastic
+    2300002: MeshBody4
     3300000: Plastic
+    3300002: MeshBody4
     4300000: Plastic
+    4300002: MeshBody4
   materials:
     importMaterials: 1
     materialName: 0

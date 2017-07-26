@@ -1,11 +1,8 @@
 ﻿using System;
 using UnityEngine;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
-using System.Security.Cryptography;
 using Newtonsoft.Json;
 using Random = UnityEngine.Random;
 
@@ -40,6 +37,17 @@ public class MultipleWidgets : MonoBehaviour
     public GameObject PCMCIAPort;
     public GameObject VGAPort;
 
+    public GameObject ACPortFiller;
+    public GameObject RJ45PortFiller;
+    public GameObject USBPortFiller;
+    public GameObject CompositeVideoPortFiller;
+    public GameObject ComponentVideoPortFiller;
+    public GameObject RCAPortFiller;
+    public GameObject HDMIPortFiller;
+    public GameObject PS2PortFiller;
+
+    public GameObject MultipleWidgetTopHalf;
+
     public GameObject Indicator;
     public TextMesh IndicatorText;
     public GameObject[] IndicatorLights;
@@ -72,12 +80,17 @@ public class MultipleWidgets : MonoBehaviour
 
         public bool EnableEncryptedIndicators = false;
         public int MaxEncryptedIndicators = 2;
+        public float EncryptionProbability = 0.5f;
         public string HowToUse4_1 = "If Enabled, Some of the Indicators up to a max count per bomb will be encrypted. Refer to";
         public string HowToUse4_2 = "http://steamcommunity.com/sharedfiles/filedetails/?id=1060194010 to see how Encrypted Indicators work.";
         public string HowToUse4_3 = "This also stacks with colors if enabled as well.";
+        public string HowToUse4_4 = "EncryptionProbability is a number between 0.0f to 1.0f, and determines how likely the indicators will be encrypted.";
 
-        public bool DebugModePorts = false;
-        public string HowToUse5 = "This forces the port plates to have every type possible in the given set.";
+        public bool DebugModeForceAllPortsInCurrentSet = false;
+        public string HowToUse5_1 = "This forces the port plates to have every type possible in the given set.";
+
+        public bool DebugModeForceAllPossiblePorts = false;
+        public string HowToUse5_2 = "This Forces every port from the first port plate sets to spwan. (This overrides DebugModeForceAllPortsInCurrentSet)";
 
         public bool DebugModeBatteries = false;
         public string HowToUse6 = "This forces the battery count to be 0, 3 or 4. Never 1 or 2.";
@@ -89,6 +102,7 @@ public class MultipleWidgets : MonoBehaviour
     {
         public string portSetName;
         public GameObject port;
+        public GameObject portFiller = null;
         public PortType type;
     }
 
@@ -112,10 +126,6 @@ public class MultipleWidgets : MonoBehaviour
     private float _timeElapsed;
 
     private const float TimerLength = 60.0f;
-
-    private Type _indicatorWidgetType = null;
-    private FieldInfo _indicatorLabelsField = null;
-    private List<string> _knownIndicators = null;
 
     private static int _widgetCounter = 1;
     private int _widgetID;
@@ -192,6 +202,7 @@ public class MultipleWidgets : MonoBehaviour
         LoadSettings();
 
         Ports.SetActive(false);
+        MultipleWidgetTopHalf.SetActive(true);
         Indicator.SetActive(false);
         IndicatorText.text = string.Empty;
         TwoFactor.SetActive(false);
@@ -237,6 +248,8 @@ public class MultipleWidgets : MonoBehaviour
         {
             IndicatorTransform.localPosition = TwoFactorTransform.localPosition;
         }
+        GetComponent<KMWidget>().OnQueryRequest += GetQueryResponse;
+        GetComponent<KMWidget>().OnWidgetActivate += OnActivate;
     }
 
     void Update()
@@ -245,8 +258,87 @@ public class MultipleWidgets : MonoBehaviour
         PortUpdate();
     }
 
-    #region Indicators
+    public void LogEdgework(string[] items, string edgeworkname)
+    {
+        var edgework = "";
+        foreach (var response in items)
+        {
+            if (edgework == "")
+                edgework = edgeworkname + " " + response;
+            else
+                edgework += ", " + response;
+        }
+        if (edgework != "")
+            DebugLog(edgework);
+    }
 
+    public void OnActivate()
+    {
+        if (_twofactor)
+            TwoFactorActivate();
+
+        var idList = new List<string>();
+        foreach (var response in Info.QueryWidgets("MultipleWidgetsIDQuery", null))
+        {
+            if (string.IsNullOrEmpty(response)) continue;
+            var mwid = JsonConvert.DeserializeObject<Dictionary<string, int>>(response);
+            if (mwid["MultipleWidgetsIDQuery"] > _widgetID) return;
+            idList.Add(mwid["MultipleWidgetsIDQuery"].ToString());
+        }
+
+        DebugLog("For bomb with Serial# {0}, the Following widgets are present:", Info.GetSerialNumber());
+
+        LogEdgework(idList.ToArray(),"MultipleWidget ID Numbers: ");
+
+        LogEdgework(Info.GetOnIndicators().OrderBy(x => x).ToArray(),"Lit Indicators:");
+        LogEdgework(Info.GetOffIndicators().OrderBy(x => x).ToArray(),"Unlit Indicators:");
+        foreach (var color in IndicatorLights)
+        {
+            LogEdgework(Info.GetColoredIndicators(color.name).OrderBy(x => x).ToArray(), color.name + " Indicators:");
+        }
+        for (var batteries = 0; batteries <= 4; batteries++)
+        {
+            var holders = Info.GetBatteryHolderCount(batteries);
+            if (holders == 0) continue;
+            DebugLog(
+                batteries == 1
+                    ? "Number of Holders with {0} battery: {1}"
+                    : "Number of Holders with {0} batteries: {1}", batteries, holders);
+        }
+
+        foreach (var plate in Info.GetPortPlates())
+        {
+            if(plate.Length == 0)
+                DebugLog("Empty Port Plate");
+            else
+                LogEdgework(plate.OrderBy(x => x).ToArray(), "Port Plate:");
+        }
+
+        foreach (var twofactor in Info.GetTwoFactorCodes())
+        {
+            DebugLog("Two Factor: {0}", twofactor);
+        }
+    }
+
+    public string GetQueryResponse(string queryKey, string queryInfo)
+    {
+        if (_batteries && GetBatteryQueryResponse(queryKey, queryInfo) != "")
+            return GetBatteryQueryResponse(queryKey, queryInfo);
+        if (_ports && GetPortQueryResponse(queryKey, queryInfo) != "")
+            return GetPortQueryResponse(queryKey, queryInfo);
+        if (_indicator && GetIndicatorQueryResponse(queryKey, queryInfo) != "")
+            return GetIndicatorQueryResponse(queryKey, queryInfo);
+        if (_twofactor && GetTwoFactorQueryResponse(queryKey, queryInfo) != "")
+            return GetTwoFactorQueryResponse(queryKey, queryInfo);
+
+        //Debugging for seeing what widgets ARE present on each bomb according to KMBombInfo.GetQueryResponse
+        if (queryKey.Equals("MultipleWidgetsIDQuery"))
+            return JsonConvert.SerializeObject(
+                new Dictionary<string, int> {{ "MultipleWidgetsIDQuery", _widgetID}});
+        return "";
+    }
+
+    #region Indicators
     #region EncryptedIndicators
     string[] labels = new string[] { "CLR", "IND", "TRN", "FRK", "CAR", "FRQ", "NSA", "SIG", "MSA", "SND", "BOB" };
     Dictionary<char, int[]> answers = new Dictionary<char, int[]>();
@@ -307,8 +399,12 @@ public class MultipleWidgets : MonoBehaviour
             modules = 0;
             lastTime = (int)Time.realtimeSinceStartup;
         }
-        modules++;
+        var encrypted = _modSettings.EnableEncryptedIndicators &&
+                        modules < _modSettings.MaxEncryptedIndicators &&
+                        Random.value < _modSettings.EncryptionProbability;
 
+        if(encrypted)
+            modules++;
 
         int solutionIndex = 0;
         List<char> selections = chars;
@@ -325,70 +421,27 @@ public class MultipleWidgets : MonoBehaviour
         }
 
         _indicatorLabel = getIndicator(solutionIndex, secondary_label);
-        if (modules > _modSettings.MaxEncryptedIndicators)
+        if (!encrypted)
             IndicatorText.text = _indicatorLabel;
     }
     #endregion
-
-    void InitializeIndicatorPool()
-    {
-        _indicatorWidgetType = ReflectionHelper.FindType("IndicatorWidget");
-        if (_indicatorWidgetType != null)
-        {
-            _indicatorLabelsField = _indicatorWidgetType.GetField("Labels", BindingFlags.Public | BindingFlags.Static);
-            _knownIndicators = (List<string>)_indicatorLabelsField.GetValue(null);
-        }
-        else
-        {
-            _knownIndicators = new List<string>
-            {
-                "CLR",
-                "IND",
-                "TRN",
-                "FRK",
-                "CAR",
-                "FRQ",
-                "NSA",
-                "SIG",
-                "MSA",
-                "SND",
-                "BOB"
-            };
-        }
-    }
 
     void SetIndicators()
     {
         IndicatorText.text = "";
         Indicator.SetActive(true);
-        InitializeIndicatorPool();
-        var KnownIndicators = new List<string>(_knownIndicators);
+        
         _indicatorLight = Random.value > 0.4f;
         if (_indicatorLight)
         {
             _indicatorLightColor = _modSettings.EnableIndicatorColors ? Random.Range(1, IndicatorLights.Length) : 1;
         }
-        foreach (var exsting in Info.GetIndicators())
-        {
-            if (KnownIndicators.Contains(exsting))
-                KnownIndicators.Remove(exsting);
-        }
 
-        if (_modSettings.EnableEncryptedIndicators && Random.value > 0.5f)
+        setSolution();
+        if (!IndicatorText.text.Equals(_indicatorLabel))
         {
-            setSolution();
-            if (!IndicatorText.text.Equals(_indicatorLabel))
-            {
-                DebugLog("Indicator {0} is Encrypted as {1}", _indicatorLabel, IndicatorText.text);
-                IndicatorText.fontSize = 90;
-            }
-        }
-        else
-        {
-            _indicatorLabel = KnownIndicators.Count > 0
-                ? KnownIndicators[Random.Range(0, KnownIndicators.Count)]
-                : "NLL";
-            IndicatorText.text = _indicatorLabel;
+            DebugLog("Indicator {0} is Encrypted as {1}", _indicatorLabel, IndicatorText.text);
+            IndicatorText.fontSize = 80;
         }
 
         Debug.LogFormat("[IndicatorWidget] Randomizing Indicator Widget: {0} {1}", (!_indicatorLight) ? "unlit" : "lit", _indicatorLabel);
@@ -396,7 +449,6 @@ public class MultipleWidgets : MonoBehaviour
             DebugLog("Indicator Light Color is {0}", IndicatorLights[_indicatorLightColor].name);
         
         IndicatorLights[_indicatorLightColor].SetActive(true);
-        GetComponent<KMWidget>().OnQueryRequest += GetIndicatorQueryResponse;
     }
 
     public string GetIndicatorQueryResponse(string queryKey, string queryInfo)
@@ -435,30 +487,30 @@ public class MultipleWidgets : MonoBehaviour
             },
             new List<PortSet> //Vanilla set 2
             {
-                new PortSet {port = PS2Port, type = PortType.PS2, portSetName = "Vanilla Set 2" },
+                new PortSet {port = PS2Port, type = PortType.PS2, portSetName = "Vanilla Set 2", portFiller = PS2PortFiller },
                 new PortSet {port = DVIPort, type = PortType.DVI },
-                new PortSet {port = RJ45Port, type = PortType.RJ45 },
-                new PortSet {port = StereoRCAPort, type = PortType.StereoRCA },
+                new PortSet {port = RJ45Port, type = PortType.RJ45, portFiller = RJ45PortFiller },
+                new PortSet {port = StereoRCAPort, type = PortType.StereoRCA, portFiller = RCAPortFiller },
             },
             new List<PortSet> //New Port
             {
-                new PortSet {port = HDMIPort, type = PortType.HDMI, portSetName = "New ports" },
-                new PortSet {port = USBPort, type = PortType.USB },
-                new PortSet {port = ComponentVideoPort, type = PortType.ComponentVideo },
-                new PortSet {port = ACPort, type = PortType.AC },
+                new PortSet {port = HDMIPort, type = PortType.HDMI, portSetName = "New ports", portFiller = HDMIPortFiller },
+                new PortSet {port = USBPort, type = PortType.USB, portFiller = USBPortFiller },
+                new PortSet {port = ComponentVideoPort, type = PortType.ComponentVideo, portFiller = ComponentVideoPortFiller },
+                new PortSet {port = ACPort, type = PortType.AC, portFiller = ACPortFiller },
                 new PortSet {port = PCMCIAPort, type = PortType.PCMCIA },
                 new PortSet {port = VGAPort, type = PortType.VGA },
-                new PortSet {port = CompositeVideoPort, type = PortType.CompositeVideo },
+                new PortSet {port = CompositeVideoPort, type = PortType.CompositeVideo, portFiller = CompositeVideoPortFiller },
             },
             new List<PortSet> //Monitor
             {
                 new PortSet {port = DVIPort, type = PortType.DVI, portSetName = "Monitor ports" },
-                new PortSet {port = StereoRCAPort, type = PortType.StereoRCA },
-                new PortSet {port = HDMIPort, type = PortType.HDMI },
-                new PortSet {port = ComponentVideoPort, type = PortType.ComponentVideo },
+                new PortSet {port = StereoRCAPort, type = PortType.StereoRCA, portFiller = RCAPortFiller },
+                new PortSet {port = HDMIPort, type = PortType.HDMI, portFiller = HDMIPortFiller },
+                new PortSet {port = ComponentVideoPort, type = PortType.ComponentVideo, portFiller = ComponentVideoPortFiller },
                 new PortSet {port = VGAPort, type = PortType.VGA },
-                new PortSet {port = CompositeVideoPort, type = PortType.CompositeVideo },
-                new PortSet {port = ACPort, type = PortType.AC },
+                new PortSet {port = CompositeVideoPort, type = PortType.CompositeVideo, portFiller = CompositeVideoPortFiller },
+                new PortSet {port = ACPort, type = PortType.AC, portFiller = ACPortFiller },
             },
             new List<PortSet> //Computer related
             {
@@ -466,36 +518,60 @@ public class MultipleWidgets : MonoBehaviour
                 new PortSet {port = SerialPort, type = PortType.Serial },
                 new PortSet {port = PCMCIAPort, type = PortType.PCMCIA },
                 new PortSet {port = VGAPort, type = PortType.VGA },
-                new PortSet {port = PS2Port, type = PortType.PS2 },
-                new PortSet {port = RJ45Port, type = PortType.RJ45 },
-                new PortSet {port = USBPort, type = PortType.USB },
-                new PortSet {port = ACPort, type = PortType.AC },
+                new PortSet {port = PS2Port, type = PortType.PS2, portFiller = PS2PortFiller },
+                new PortSet {port = RJ45Port, type = PortType.RJ45, portFiller = RJ45PortFiller },
+                new PortSet {port = USBPort, type = PortType.USB, portFiller = USBPortFiller },
+                new PortSet {port = ACPort, type = PortType.AC, portFiller = ACPortFiller },
             }
         };
 
         foreach (var portGroup in _portGroups)
             foreach (var set in portGroup)
+            {
                 set.port.SetActive(false);
+                if (set.portFiller != null)
+                    set.portFiller.SetActive(true);
+            }
     }
 
     void SetPorts()
     {
         Ports.SetActive(true);
+        MultipleWidgetTopHalf.SetActive(false);
         InitializePortSets();
         _portList = new List<string>();
 
-        var portset = _portGroups[Random.Range(0, _modSettings.EnableExtendedPorts ? _portGroups.Count : 2)];
-        foreach (var set in portset)
+        if (!_modSettings.DebugModeForceAllPossiblePorts)
         {
-            if (!_modSettings.DebugModePorts && !(Random.value > 0.5f)) continue;
-            _presentPorts |= set.type;
-            set.port.SetActive(true);
-            _portList.Add(set.type.ToString());
-        }
+            var portset = _portGroups[Random.Range(0, _modSettings.EnableExtendedPorts ? _portGroups.Count : 2)];
+            foreach (var set in portset)
+            {
+                if (!_modSettings.DebugModeForceAllPortsInCurrentSet && !(Random.value > 0.5f)) continue;
+                _presentPorts |= set.type;
+                set.port.SetActive(true);
+                if (set.portFiller != null)
+                    set.portFiller.SetActive(false);
+                _portList.Add(set.type.ToString());
+            }
 
-        DebugLog("Using ports from the following port set: {0}", portset[0].portSetName);
+            DebugLog("Using ports from the following port set: {0}", portset[0].portSetName);
+        }
+        else
+        {
+            DebugLog("Forcing EVERY possible port.");
+            for (var i = 0; i < 3; i++)
+            {
+                foreach (var set in _portGroups[i])
+                {
+                    _presentPorts |= set.type;
+                    set.port.SetActive(true);
+                    if (set.portFiller != null)
+                        set.portFiller.SetActive(false);
+                    _portList.Add(set.type.ToString());
+                }
+            }
+        }
         Debug.LogFormat("[PortWidget] Randomizing Port Widget: {0}", _presentPorts.ToString());
-        GetComponent<KMWidget>().OnQueryRequest += GetPortQueryResponse;
     }
 
     public bool IsPortPresent(PortType port)
@@ -586,7 +662,6 @@ public class MultipleWidgets : MonoBehaviour
             cell.Rotate(new Vector3(0, 0, Random.Range(0, 360.0f)));
         }
         NineVoltCell.Rotate(new Vector3(0, 0, Random.value < 0.5f ? 0 : 180));
-        GetComponent<KMWidget>().OnQueryRequest += GetBatteryQueryResponse;
     }
 
     int GetNumberOfBatteries()
@@ -621,8 +696,6 @@ public class MultipleWidgets : MonoBehaviour
     {
         GenerateKey();
         TwoFactor.SetActive(true);
-        GetComponent<KMWidget>().OnWidgetActivate += TwoFactorActivate;
-        GetComponent<KMWidget>().OnQueryRequest += GetTwoFactorQueryResponse;
     }
 
     private void GenerateKey()
@@ -669,8 +742,7 @@ public class MultipleWidgets : MonoBehaviour
     {
         if (queryKey == KMBombInfoExtensions.WidgetQueryTwofactor && _twofactor)
         {
-            var response = new Dictionary<string, int> { { KMBombInfoExtensions.WidgetTwofactorKey, _key } };
-            return JsonConvert.SerializeObject(response);
+            return JsonConvert.SerializeObject(new Dictionary<string, int> { { KMBombInfoExtensions.WidgetTwofactorKey, _key }});
         }
         return "";
     }
